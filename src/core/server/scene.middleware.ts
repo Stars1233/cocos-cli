@@ -36,6 +36,16 @@ export default {
             },
         },
         {
+            url: '/:dir/:uuid/:nativeName.:ext',
+            async handler(req: Request, res: Response) {
+                const { uuid, ext, nativeName } = req.params;
+                const { assetManager } = await import('../assets');
+                const assetInfo = assetManager.queryAssetInfo(uuid);
+                const filePath = assetInfo && assetInfo.library[`${nativeName}.${ext}`];
+                res.status(200).send(filePath || req.url);
+            },
+        },
+        {
             url: '/:dir/:uuid.:ext',
             async handler(req: Request, res: Response) {
                 const { uuid, ext } = req.params;
@@ -49,7 +59,7 @@ export default {
     post: [],
     staticFiles: [],
     socket: {
-        connection: (socket: any) => {},
-        disconnect: (socket: any) => {}
+        connection: (socket: any) => { },
+        disconnect: (socket: any) => { }
     },
 } as IMiddlewareContribution;

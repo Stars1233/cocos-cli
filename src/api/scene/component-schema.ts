@@ -1,25 +1,30 @@
-import { result } from 'lodash';
 import { z } from 'zod';
 
 // 创建组件信息
 export const SchemaAddComponentInfo = z.object({
     nodePath: z.string().describe('节点路径'),
+    //component: z.enum(Object.keys(globalComponentType) as [string, ...string[]]).describe('组件类型'),
     component: z.string().describe('组件名称'),
 }).describe('添加组件的信息');
 
 // 当前组件信息
-export const SchemaComponent = z.object({
-    path: z.string().describe('返回组件的路径，不包含节点路径'),
-}).describe('当前组件的信息');
+export const SchemaComponentIdentifier = z.object({
+    cid: z.string().describe('组件标识符'),
+    path: z.string().describe('返回组件的路径，包含节点路径'),
+    uuid: z.string().describe('组件的uuid'),
+    name: z.string().describe('组件名称'),
+    type: z.string().describe('组件类型'),
+    enabled: z.boolean().describe('组件是否使能'),
+}).describe('组件的标识');
 
 // 移除组件
 export const SchemaRemoveComponent = z.object({
-    path: z.string().optional().describe('组件的路径，不包含节点路径'),
+    path: z.string().describe('组件的路径，包含节点路径'),
 }).describe('移除组件需要的信息');
 
 // 查询组件
 export const SchemaQueryComponent = z.object({
-    path: z.string().optional().describe('组件的路径，不包含节点路径'),
+    path: z.string().describe('组件的路径，包含节点路径'),
 }).describe('查询组件需要的信息');
 
 /**
@@ -29,6 +34,11 @@ export const SchemaQueryComponent = z.object({
 export const SchemaProperty = z.object({
     value: z.union([
         z.record(z.string(), z.any()),
+        z.array(z.any()),
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.null(),
         z.any()
     ]).describe('属性的当前值，可以是键值对对象或基础类型值'),
 
@@ -50,16 +60,23 @@ export const SchemaSetPropertyOptions = z.object({
 }).describe('设置组件属性的信息');
 
 
-export const SchemaComponentInfoResult = SchemaProperty.extend({
-    properties: SchemaProperty.describe('组件的值对象'),
-    enabled: z.any().describe('组件是否启用'),
-    uuid: z.string().describe('组件的唯一标识符'),
-}).describe('组件dump信息');
+export const SchemaComponent = SchemaProperty.extend({
+    properties: z.record(
+        z.string().describe('属性名称'),
+        SchemaProperty,
+    )
+}).describe('组件dump出来的信息');
 
+export const SchemaBuildinComponentTypes = z.array(z.string()).describe('所有内置组件的集合');
+
+export const SchemaComponentResult = z.union([SchemaComponent, z.null()]).describe('获取当前组件信息返回的接口');
 export const SchemaBooleanResult = z.boolean().describe('接口返回结果');
 
 // 类型导出
 export type TAddComponentInfo = z.infer<typeof SchemaAddComponentInfo>;
-export type TComponent = z.infer<typeof SchemaComponent>;
+export type TComponentIdentifier = z.infer<typeof SchemaComponentIdentifier>;
+export type TRemoveComponentOptions = z.infer<typeof SchemaRemoveComponent>;
+export type TQueryComponentOptions = z.infer<typeof SchemaQueryComponent>;
 export type TSetPropertyOptions = z.infer<typeof SchemaSetPropertyOptions>;
-export type TComponentInfoResult = z.infer<typeof SchemaComponentInfoResult>;
+export type TComponentResult = z.infer<typeof SchemaComponentResult>;
+export type TBuildinComponentTypes = z.infer<typeof SchemaBuildinComponentTypes>;

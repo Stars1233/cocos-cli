@@ -1,4 +1,4 @@
-import { IComponent } from './component';
+import { IComponent, IComponentIdentifier } from './component';
 import { IVec3, IQuat, IMat4 } from './value-types';
 
 export enum NodeType {
@@ -12,7 +12,7 @@ export enum NodeType {
     LABEL = 'Label', // 文本节点
     MASK = 'Mask', // 遮罩节点
     PARTICLE = 'Particle', // 粒子节点(需要用过 TWorkMode 来区分 2D 和 3D)
-    TILE_MAP = 'TileMap', // 瓦片地图节点
+    TILED_MAP = 'TiledMap', // 瓦片地图节点
 
     CAPSULE = 'Capsule', // 胶囊体节点
     CONE = 'Cone', // 圆锥体节点
@@ -100,7 +100,7 @@ export interface IQueryNodeParams {
 // 节点查询结果项接口
 export interface INode extends INodeIdentifier {
     properties: INodeProperties; // 节点属性
-    components?: IComponent[]; // 节点上的组件列表
+    components?: IComponentIdentifier[]; // 节点上的组件列表
     children?: INode[]; // 子节点列表
 }
 
