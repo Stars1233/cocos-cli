@@ -5,7 +5,7 @@ import { pathToFileURL } from 'url';
 import { getDatabaseModuleRootURL } from '../utils/db-module-url';
 import { blockAssetUUIDSet, assetInfoCache, AssetInfoCache } from '../shared/cache';
 import { resolveFileName } from '../utils/path';
-import { IAssetDBInfo } from '../../assets/@types/private';
+import { IAsset, IAssetDBInfo } from '../../assets/@types/private';
 import { normalize } from '../../base/utils/path';
 
 export interface QueryAllAssetOption<T = { assetInfo: AssetInfo }> {
@@ -35,6 +35,15 @@ export class AssetDbInterop {
         }
 
         this._hasInit = true;
+
+        const onAssetChange = (type: AssetChangeType, asset: IAsset) => {
+            const assetInfo = (globalThis as any).assetManager.queryAssetInfo(asset.uuid);
+            this._onAssetChange(AssetChangeType.modified, asset.uuid, assetInfo, asset.meta);
+        };
+
+        (globalThis as any).assetManager.on('asset-change', (asset: IAsset) => onAssetChange(AssetChangeType.modified, asset));
+        (globalThis as any).assetManager.on('asset-add', (asset: IAsset) => onAssetChange(AssetChangeType.add, asset));
+        (globalThis as any).assetManager.on('asset-delete', (asset: IAsset) => onAssetChange(AssetChangeType.remove, asset));
     }
 
     async destroyed() {
