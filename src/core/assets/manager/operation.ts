@@ -27,7 +27,7 @@ class AssetOperation extends EventEmitter {
      */
     _checkReadonly(asset: IAsset) {
         if (asset._assetDB.options.readonly) {
-            throw new Error(`${i18n.t('asset-db.operation.readonly')} \n  url: ${asset.url}`);
+            throw new Error(`${i18n.t('assets.operation.readonly')} \n  url: ${asset.url}`);
         }
     }
 
@@ -74,17 +74,17 @@ class AssetOperation extends EventEmitter {
     async saveAsset(uuidOrURLOrPath: string, content: string | Buffer) {
         const asset = assetQueryManager.queryAsset(uuidOrURLOrPath);
         if (!asset) {
-            throw new Error(`${i18n.t('asset-db.saveAsset.fail.asset')}`);
+            throw new Error(`${i18n.t('assets.save_asset.fail.asset')}`);
         }
         if (asset._assetDB.options.readonly) {
-            throw new Error(`${i18n.t('asset-db.operation.readonly')} \n  url: ${asset.url}`);
+            throw new Error(`${i18n.t('assets.operation.readonly')} \n  url: ${asset.url}`);
         }
         if (content === undefined) {
-            throw new Error(`${i18n.t('asset-db.saveAsset.fail.content')}`);
+            throw new Error(`${i18n.t('assets.save_asset.fail.content')}`);
         }
         if (!asset.source) {
             // 不存在源文件的资源无法保存
-            throw new Error(`${i18n.t('asset-db.saveAsset.fail.uuid')}`);
+            throw new Error(`${i18n.t('assets.save_asset.fail.uuid')}`);
         }
 
         const res = await assetHandlerManager.saveAsset(asset, content);
@@ -94,14 +94,11 @@ class AssetOperation extends EventEmitter {
         return assetQueryManager.encodeAsset(asset);
     }
 
-    async copyAsset(urlOrPath: string, target: string, options?: IMoveOptions) {
-    }
-
     checkValidUrl(urlOrPath: string) {
         if (!urlOrPath.startsWith('db://')) {
             urlOrPath = assetQueryManager.queryUrl(urlOrPath);
             if (!urlOrPath) {
-                throw new Error(`${i18n.t('asset-db.operation.invalid_url')} \n  url: ${urlOrPath}`);
+                throw new Error(`${i18n.t('assets.operation.invalid_url')} \n  url: ${urlOrPath}`);
             }
         }
 
@@ -109,7 +106,7 @@ class AssetOperation extends EventEmitter {
         const dbInfo = assetDBManager.assetDBInfo[dbName];
 
         if (!dbInfo || dbInfo.readonly) {
-            throw new Error(`${i18n.t('asset-db.operation.readonly')} \n  url: ${urlOrPath}`);
+            throw new Error(`${i18n.t('assets.operation.readonly')} \n  url: ${urlOrPath}`);
         }
 
         return true;
@@ -365,7 +362,7 @@ class AssetOperation extends EventEmitter {
         target = this._checkOverwrite(target, option);
         // 源地址不能被目标地址包含，也不能相等
         if (target.startsWith(join(source, '/'))) {
-            throw new Error(`${i18n.t('asset-db.renameAsset.fail.parent')} \nsource: ${source}\ntarget: ${target}`);
+            throw new Error(`${i18n.t('assets.rename_asset.fail.parent')} \nsource: ${source}\ntarget: ${target}`);
         }
         // TODO 传递路径不在同一个文件夹内，视为移动文件
         // if (dirname(target) !== dirname(source)) {
@@ -399,7 +396,7 @@ class AssetOperation extends EventEmitter {
     async removeAsset(uuidOrURLOrPath: string): Promise<IAssetInfo | null> {
         const asset = assetQueryManager.queryAsset(uuidOrURLOrPath);
         if (!asset) {
-            throw new Error(`${i18n.t('asset-db.deleteAsset.fail.unexist')} \nsource: ${uuidOrURLOrPath}`);
+            throw new Error(`${i18n.t('assets.delete_asset.fail.unexist')} \nsource: ${uuidOrURLOrPath}`);
         }
         this._checkReadonly(asset);
 
