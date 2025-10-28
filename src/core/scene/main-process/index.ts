@@ -3,6 +3,9 @@ import { SceneProxy } from './proxy/scene-proxy';
 import { ScriptProxy } from './proxy/script-proxy';
 import { NodeProxy } from './proxy/node-proxy';
 import { ComponentProxy } from './proxy/component-proxy';
+import { AssetProxy } from './proxy/asset-proxy';
+import { EngineProxy } from './proxy/engine-proxy';
+
 import { assetManager } from '../../assets';
 import scriptManager from '../../scripting';
 
@@ -16,8 +19,9 @@ export const Scene = {
     ...ScriptProxy,
     ...NodeProxy,
     ...ComponentProxy,
+    ...AssetProxy,
+    ...EngineProxy,
 
     // 场景进程
     worker: sceneWorker,
 };
-

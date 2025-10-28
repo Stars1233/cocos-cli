@@ -1,9 +1,9 @@
 /**
  * 场景
  */
-
+import type { Scene } from 'cc';
 import { INode } from './node';
-import { IComponent, IComponentIdentifier } from './component';
+import { IComponentIdentifier } from './component';
 
 /**
  * 场景模板类型
@@ -70,6 +70,26 @@ export interface ICloseSceneOptions {
 }
 
 /**
+ * 存储场景基础信息以及实例
+ */
+export interface ISceneEntry {
+    identifier: ISceneIdentifier;
+    instance: Scene,
+}
+
+/**
+ * 场景事件类型
+ */
+export interface ISceneEvents {
+    'scene:open': IScene;
+    'scene:close': void;
+    'scene:save': void;
+    'scene:soft-reload': void;
+}
+
+export interface IPublicSceneService extends ISceneService {}
+
+/**
  * 场景相关处理接口
  */
 export interface ISceneService {
@@ -116,3 +136,4 @@ export interface ISceneService {
      */
     queryScenes(): Promise<IScene[]>;
 }
+

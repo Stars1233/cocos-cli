@@ -1,13 +1,15 @@
 import { SceneReadyChannel } from '../common';
-import { startupRpc } from './rpc';
+import { Rpc } from './rpc';
 import { parseCommandLineArgs } from './utils';
 import { Engine } from '../../engine';
 import { join } from 'path';
+import { ServiceEvents } from './service/core';
 
-async function startup () {
+async function startup() {
     // 监听进程退出事件
     process.on('message', (msg) => {
         if (msg === 'scene-process:exit') {
+            ServiceEvents.clear();
             process.disconnect?.(); // 关闭 IPC
             process.exit(0);// 退出进程
         }
@@ -32,17 +34,23 @@ async function startup () {
         // 导入 service，处理装饰器，捕获开发的 api
         await import('./service');
         console.log('[Scene] import service');
-        await startupRpc();
+        await Rpc.startup();
         console.log('[Scene] startup Rpc');
 
-        // TODO hack 后续可能要思考一下如何正确的初始化引擎
-        const { Service } = await import('./service/decorator');
+        const { Service } = await import('./service/core/decorator');
         (globalThis.cce as any) = {
             Script: Service.Script
         };
     }, async () => {
         await cc.game.run();
+        // 初始化 engine 服务
+        const { Service } = await import('./service/core/decorator');
+        await Service.Engine.init();
     });
+
+    const { startupListener } = await import('./listener');
+    startupListener();
+
     console.log('[Scene] initEngine success');
 
     // 发送消息给父进程

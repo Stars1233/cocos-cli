@@ -1,12 +1,10 @@
 import cc from 'cc';
-import { EventEmitter } from 'events';
 import { Executor } from '@cocos/lib-programming/dist/executor';
 import { QuickPackLoaderContext } from '@cocos/creator-programming-quick-pack/lib/loader';
-import utils from '../../../base/utils';
-import type { IAssetInfo } from '../../../assets/@types/public';
 import { Rpc } from '../rpc';
-import { register, expose } from './decorator';
-import { IScriptService } from '../../common';
+import { BaseService, register } from './core';
+import { IScriptEvents, IScriptService } from '../../common';
+import utils from '../../../base/utils';
 
 /**
  * 异步迭代。有以下特点：
@@ -92,12 +90,7 @@ class GlobalEnv {
 const globalEnv = new GlobalEnv();
 
 @register('Script')
-export class ScriptService extends EventEmitter implements IScriptService {
-    /**
-     * 当脚本刷新并执行完成时触发。
-     */
-    public readonly EXECUTION_FINISHED = 'execution-finished';
-
+export class ScriptService extends BaseService<IScriptEvents> implements IScriptService {
     private _executor!: Executor;
 
     private _suspendPromise: Promise<void> | null = null;
@@ -125,7 +118,6 @@ export class ScriptService extends EventEmitter implements IScriptService {
         this._suspendPromise = condition;
     }
 
-    @expose()
     async init() {
         EditorExtends.on('class-registered', (classConstructor: Function, metadata: any, className: string) => {
             console.log('classRegistered', className);
@@ -138,14 +130,14 @@ export class ScriptService extends EventEmitter implements IScriptService {
                     classConstructor, 'i18n:menu.custom_script/' + className, -1);
             }
         });
-        const serializedPackLoaderContext = await Rpc.request('programming', 'getPackerDriverLoaderContext', ['editor']);
+        const serializedPackLoaderContext = await Rpc.getInstance().request('programming', 'getPackerDriverLoaderContext', ['editor']);
         if (!serializedPackLoaderContext) {
             throw new Error('packer-driver/get-loader-context is not defined');
         }
         const quickPackLoaderContext = QuickPackLoaderContext.deserialize(serializedPackLoaderContext);
 
         const { loadDynamic } = await import('cc/preload');
-        const cceModuleMap = await Rpc.request('programming', 'queryCCEModuleMap');
+        const cceModuleMap = await Rpc.getInstance().request('programming', 'queryCCEModuleMap');
         this._executor = await Executor.create({
             // @ts-ignore
             importEngineMod: async (id) => {
@@ -174,6 +166,7 @@ export class ScriptService extends EventEmitter implements IScriptService {
             importExceptionHandler: (...args) => this._handleImportException(...args),
             cceModuleMap,
         });
+        // eslint-disable-next-line no-undef
         globalThis.self = window;
         this._executor.addPolyfillFile(require.resolve('@cocos/build-polyfills/prebuilt/editor/bundle'));
         // 同步插件脚本列表
@@ -182,7 +175,6 @@ export class ScriptService extends EventEmitter implements IScriptService {
         await this._reloadScripts.nextIteration();
     }
 
-    @expose()
     async investigatePackerDriver() {
         void this._executeAsync();
     }
@@ -191,7 +183,6 @@ export class ScriptService extends EventEmitter implements IScriptService {
      * 传入一个 uuid 返回这个 uuid 对应的脚本组件名字
      * @param uuid
      */
-    @expose()
     async queryScriptName(uuid: string) {
         const compressUuid = utils.UUID.compressUUID(uuid, false);
         const list = this._executor.queryClassesInModule(compressUuid);
@@ -206,7 +197,6 @@ export class ScriptService extends EventEmitter implements IScriptService {
      * 传入一个 uuid 返回这个 uuid 对应的脚本的 cid
      * @param uuid
      */
-    @expose()
     async queryScriptCid(uuid: string) {
         const compressUuid = utils.UUID.compressUUID(uuid, false);
         const list = this._executor.queryClassesInModule(compressUuid);
@@ -221,8 +211,7 @@ export class ScriptService extends EventEmitter implements IScriptService {
      * 是否是自定义脚本（不是引擎定义的组件）
      * @param classConstructor
      */
-    @expose()
-    public isCustomComponent(classConstructor: Function) {
+    public async isCustomComponent(classConstructor: Function) {
         return this.customComponents.has(classConstructor);
     }
 
@@ -231,7 +220,6 @@ export class ScriptService extends EventEmitter implements IScriptService {
     /**
      * 加载脚本时触发
      */
-    @expose()
     async loadScript() {
         this._syncPluginScriptListAsync();
     }
@@ -239,7 +227,6 @@ export class ScriptService extends EventEmitter implements IScriptService {
     /**
      * 删除脚本时触发
      */
-    @expose()
     async removeScript() {
         this._syncPluginScriptListAsync();
     }
@@ -247,7 +234,6 @@ export class ScriptService extends EventEmitter implements IScriptService {
     /**
      * 脚本发生变化时触发
      */
-    @expose()
     async scriptChange() {
         this._syncPluginScriptListAsync();
     }
@@ -265,7 +251,7 @@ export class ScriptService extends EventEmitter implements IScriptService {
 
             return globalEnv.record(
                 () => this._executor.reload().finally(() => {
-                    this.emit(this.EXECUTION_FINISHED);
+                    this.emit('script:execution-finished');
                 }),
             );
         });
@@ -285,7 +271,7 @@ export class ScriptService extends EventEmitter implements IScriptService {
      * @private
      */
     private async _syncPluginScriptList() {
-        return Promise.resolve(Rpc.request('assetManager', 'querySortedPlugins', [{
+        return Promise.resolve(Rpc.getInstance().request('assetManager', 'querySortedPlugins', [{
             loadPluginInEditor: true,
         }]))
             .then((pluginScripts) => {

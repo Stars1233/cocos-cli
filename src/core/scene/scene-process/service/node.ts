@@ -1,34 +1,33 @@
-import { register, expose } from './decorator';
-import { type ICreateByNodeTypeParams, type ICreateByAssetParams, type IDeleteNodeParams, type INodeService, type IUpdateNodeParams, type IUpdateNodeResult, type IQueryNodeParams, type INode, type IDeleteNodeResult, NodeType } from '../../common';
+import { register, BaseService } from './core';
+import {
+    type ICreateByAssetParams,
+    type ICreateByNodeTypeParams,
+    type IDeleteNodeParams,
+    type IDeleteNodeResult,
+    type INode,
+    type INodeService,
+    type IQueryNodeParams,
+    type INodeEvents,
+    type IUpdateNodeParams,
+    type IUpdateNodeResult,
+    NodeType
+} from '../../common';
 import { Rpc } from '../rpc';
-import EventEmitter from 'events';
-import { Vec3, Node, Prefab, CCObject, Quat } from 'cc';
+import { CCObject, Node, Prefab, Quat, Vec3 } from 'cc';
 import { createNodeByAsset, loadAny } from './node/node-create';
 import { getUICanvasNode, setLayer } from './node/node-utils';
 import sceneUtil from './scene/utils';
-import NodeConfig from './node-type-config';
+import NodeConfig from './node/node-type-config';
 
 const NodeMgr = EditorExtends.Node;
-
-/**
- * 场景事件类型
- */
-type NodeEventType = 'add' | 'remove' | 'change' | 'before-change' | 'before-add' | 'before-remove';
 
 /**
  * 子进程节点处理器
  * 在子进程中处理所有节点相关操作
  */
 @register('Node')
-export class NodeService extends EventEmitter implements INodeService {
-    // 限制消息类型
-    on(type: NodeEventType, listener: (arg: any) => void): this { return super.on(type, listener); }
-    off(type: NodeEventType, listener: (arg: any) => void): this { return super.off(type, listener); }
-    once(type: NodeEventType, listener: (arg: any) => void): this { return super.once(type, listener); }
-    emit(type: NodeEventType, ...args: any[]): boolean { return super.emit(type, ...args); }
+export class NodeService extends BaseService<INodeEvents> implements INodeService {
 
-
-    @expose()
     async createNodeByType(params: ICreateByNodeTypeParams): Promise<INode | null> {
         let canvasNeeded = params.canvasRequired || false;
         const nodeType = params.nodeType as string;
@@ -48,9 +47,8 @@ export class NodeService extends EventEmitter implements INodeService {
         return this._createNode(assetUuid, canvasNeeded, params.nodeType == NodeType.EMPTY, params);
     }
 
-    @expose()
     async createNodeByAsset(params: ICreateByAssetParams): Promise<INode | null> {
-        const assetUuid = await Rpc.request('assetManager', 'queryUUID', [params.dbURL]);
+        const assetUuid = await Rpc.getInstance().request('assetManager', 'queryUUID', [params.dbURL]);
         if (!assetUuid) {
             throw new Error(`Asset not found for dbURL: ${params.dbURL}`);
         }
@@ -92,8 +90,10 @@ export class NodeService extends EventEmitter implements INodeService {
             resultNode.name = params.name;
         }
 
-        this.emit('before-add', resultNode);
-        this.emit('before-change', parent);
+        this.emit('node:before-add', sceneUtil.generateNodeInfo(resultNode, false));
+        if (parent) {
+            this.emit('node:before-change', sceneUtil.generateNodeInfo(parent, false));
+        }
 
         /**
          * 默认创建节点是从 prefab 模板，所以初始是 prefab 节点
@@ -119,11 +119,11 @@ export class NodeService extends EventEmitter implements INodeService {
         }
 
         // 发送添加节点事件，添加节点中的根节点
-        this.emit('add', resultNode);
+        this.emit('node:add', sceneUtil.generateNodeInfo(resultNode, false));
 
         // 发送节点修改消息
         if (parent) {
-            // this.emit('change', parent, { type: cc.NodeEventType.CHILD_CHANGED });
+            // this.emit('node:change', sceneUtil.generateNodeInfo(parent, false), { type: cc.NodeEventType.CHILD_CHANGED });
         }
 
         return sceneUtil.generateNodeInfo(resultNode, true);
@@ -148,8 +148,8 @@ export class NodeService extends EventEmitter implements INodeService {
     }
 
     /**
- * 确保路径存在，如果不存在则创建空节点
- */
+     * 确保路径存在，如果不存在则创建空节点
+     */
     private async _ensurePathExists(path: string | undefined): Promise<Node | null> {
         if (!path) {
             return null;
@@ -188,10 +188,10 @@ export class NodeService extends EventEmitter implements INodeService {
                     this.ensureUITransformComponent(nextNode);
 
                     currentParent = nextNode;
-                }
 
-                // 发送节点创建事件
-                this.emit('add', nextNode);
+                    // 发送节点创建事件
+                    this.emit('node:add', sceneUtil.generateNodeInfo(nextNode, false));
+                }
             }
         }
 
@@ -220,7 +220,7 @@ export class NodeService extends EventEmitter implements INodeService {
             comp.__prefab = null;
         });
     }
-    @expose()
+
     async deleteNode(params: IDeleteNodeParams): Promise<IDeleteNodeResult | null> {
         const path = params.path;
         const node = NodeMgr.getNodeByPath(path);
@@ -230,9 +230,9 @@ export class NodeService extends EventEmitter implements INodeService {
 
         // 发送节点修改消息
         const parent = node.parent;
-        this.emit('before-remove', node);
+        this.emit('node:before-remove', sceneUtil.generateNodeInfo(node,false));
         if (parent) {
-            this.emit('before-change', parent);
+            this.emit('node:before-change', sceneUtil.generateNodeInfo(parent, false));
         }
 
         node.setParent(null, params.keepWorldTransform);
@@ -248,8 +248,7 @@ export class NodeService extends EventEmitter implements INodeService {
             console.warn(error);
         }
 
-        // 被删除节点里的根节点
-        // this.emit('remove', node, { source: cc.EventSourceType.ENGINE });
+        this.emit('node:remove', sceneUtil.generateNodeInfo(node, false));
 
         return {
             path: path,
@@ -263,7 +262,6 @@ export class NodeService extends EventEmitter implements INodeService {
         });
     }
 
-    @expose()
     async updateNode(params: IUpdateNodeParams): Promise<IUpdateNodeResult | null> {
         const node = NodeMgr.getNodeByPath(params.path);
         if (!node) {
@@ -315,12 +313,15 @@ export class NodeService extends EventEmitter implements INodeService {
             // }
         }
 
-        return {
+        const info = {
             path: NodeMgr.getNodePath(node),
         };
+
+        this.emit('node:update', sceneUtil.generateNodeInfo(node, false));
+
+        return info;
     }
 
-    @expose()
     async queryNode(params: IQueryNodeParams): Promise<INode | null> {
         const node = NodeMgr.getNodeByPath(params.path);
         if (!node) {
@@ -360,7 +361,7 @@ export class NodeService extends EventEmitter implements INodeService {
 
     /**
      * 检查并根据需要创建 canvas节点或为父级添加UITransform组件，返回父级节点，如果需要canvas节点，则父级节点会是canvas节点
-     * @param component
+     * @param workMode
      * @param canvasRequiredParam
      * @param parent
      * @param position
@@ -369,7 +370,7 @@ export class NodeService extends EventEmitter implements INodeService {
     async checkCanvasRequired(workMode: string, canvasRequiredParam: boolean | undefined, parent: Node | null, position: Vec3 | undefined): Promise<Node | null> {
 
         if (canvasRequiredParam) {
-            let canvasNode: Node | null = null;
+            let canvasNode: Node | null;
 
             canvasNode = getUICanvasNode(parent);
             if (canvasNode) {

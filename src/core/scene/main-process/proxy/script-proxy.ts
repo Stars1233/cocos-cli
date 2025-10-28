@@ -1,20 +1,23 @@
-import {
-    IScriptService,
-} from '../../common';
+import { IPublicScriptService } from '../../common';
 import { Rpc } from '../rpc';
-import type { IAssetInfo } from '../../../assets/@types/public';
 
-export const ScriptProxy: IScriptService = {
+export const ScriptProxy: IPublicScriptService = {
     removeScript(): Promise<void> {
-        return Rpc.request('Script', 'removeScript');
+        return Rpc.getInstance().request('Script', 'removeScript');
     },
     scriptChange(): Promise<void> {
-        return Rpc.request('Script', 'scriptChange');
+        return Rpc.getInstance().request('Script', 'scriptChange');
     },
     investigatePackerDriver(): Promise<void> {
-        return Rpc.request('Script', 'investigatePackerDriver');
+        return Rpc.getInstance().request('Script', 'investigatePackerDriver');
     },
     loadScript(): Promise<void> {
-        return Rpc.request('Script', 'loadScript');
+        return Rpc.getInstance().request('Script', 'loadScript');
     },
+    queryScriptCid(uuid: string): Promise<string | null> {
+        return Rpc.getInstance().request('Script', 'queryScriptCid', [uuid]);
+    },
+    queryScriptName(uuid: string): Promise<string | null> {
+        return Rpc.getInstance().request('Script', 'queryScriptName', [uuid]);
+    }
 };

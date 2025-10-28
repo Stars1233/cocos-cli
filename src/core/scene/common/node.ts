@@ -1,5 +1,6 @@
-import { IComponent, IComponentIdentifier } from './component';
-import { IVec3, IQuat, IMat4 } from './value-types';
+import type { Node } from 'cc';
+import { IComponentIdentifier } from './component';
+import { IVec3, IQuat } from './value-types';
 
 export enum NodeType {
     EMPTY = 'Empty', // 空节点
@@ -155,6 +156,20 @@ export interface ICreateByNodeTypeParams extends IBaseCreateNodeParams {
 export interface ICreateByAssetParams extends IBaseCreateNodeParams {
     dbURL: string;
 }
+
+/**
+ * 节点事件类型
+ */
+export interface INodeEvents {
+    'node:before-add': INode;
+    'node:add': INode;
+    'node:before-remove': INode;
+    'node:remove': INode;
+    'node:update': INode;
+    'node:before-change': INode;
+}
+
+export interface IPublicNodeService extends INodeService {}
 
 /**
  * 节点的相关处理接口
