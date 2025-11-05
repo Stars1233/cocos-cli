@@ -40,8 +40,13 @@ export const JavascriptHandler: AssetHandlerBase = {
                 if (userData.isPlugin) {
                     return await _importPluginScript(asset);
                 } else {
-                    scripting.dispatchAssetChange(asset.action, asset);
-                    await scripting.compileScripts();
+                    await scripting.compileScripts([{
+                        type: asset.action,
+                        uuid: asset.uuid,
+                        filePath: asset.source,
+                        importer: asset.meta.importer,
+                        userData: asset.meta.userData,
+                    }]);
                     return true;
                 }
             } catch (error) {
@@ -53,7 +58,13 @@ export const JavascriptHandler: AssetHandlerBase = {
     },
 
     async destroy(asset: Asset | VirtualAsset) {
-        scripting.dispatchAssetChange(AssetActionEnum.delete, asset);
+        scripting.dispatchAssetChange({
+            type: AssetActionEnum.delete,
+            uuid: asset.uuid,
+            filePath: asset.source,
+            importer: asset.meta.importer,
+            userData: asset.meta.userData,
+        });
     },
 };
 

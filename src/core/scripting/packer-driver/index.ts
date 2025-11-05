@@ -17,7 +17,7 @@ import {
     ModLoOptions,
     ImportMap,
 } from '@cocos/creator-programming-mod-lo/lib/mod-lo';
-import { AssetChange, AssetChangeType, AssetDatabaseDomain, AssetDbInterop, DBChangeType, ModifiedAssetChange } from './asset-db-interop';
+import { AssetChange, AssetChangeInfo, AssetDatabaseDomain, AssetDbInterop, DBChangeType, ModifiedAssetChange } from './asset-db-interop';
 import { AssetActionEnum } from '@cocos/asset-db/libs/asset';
 import { PackerDriverLogger } from './logger';
 import { LanguageServiceAdapter } from '../language-service';
@@ -29,8 +29,6 @@ import { url2path } from '../../assets/utils';
 import { compressUuid } from '../../builder/worker/builder/utils';
 import { TypeScriptConfigBuilder } from '../intelligence';
 import { eventEmitter } from '../event-emitter';
-import { TypeScriptAssetInfoCache } from '../shared/cache';
-import { IAsset } from '../../assets/@types/private';
 import { DBInfo } from '../@types/config-export';
 
 const VERSION = '20';
@@ -284,18 +282,6 @@ export class PackerDriver {
         return this._building;
     }
 
-    /**
-     * 
-     * @param tsScriptCaches 调用方根据业务需求，更新所有 db 数据库的 ts 脚本信息缓存或某个 db 数据库的 ts 脚本信息缓存
-     */
-    public setTsScriptInfoCache(tsScriptCaches: TypeScriptAssetInfoCache[]) {
-        this._assetDbInterop.setTsScriptInfoCache(tsScriptCaches);
-    }
-
-    public setAssetChange(assetChanges: AssetChange[]) {
-        this._assetChangeQueue.push(...assetChanges);
-    }
-
     public async updateDbInfos(dbInfo: DBInfo, dbChangeType: DBChangeType) {
         const oldDbInfoSize = this._dbInfos.length;
         if (dbChangeType === DBChangeType.add) {
@@ -308,6 +294,7 @@ export class PackerDriver {
             scriptInfos.forEach((info) => {
                 this._assetChangeQueue.push({
                     type: AssetActionEnum.delete,
+                    importer: 'typescript',
                     filePath: info.filePath,
                     uuid: info.uuid,
                     isPluginScript: info.isPluginScript,
@@ -348,6 +335,10 @@ export class PackerDriver {
         }
     }
 
+    dispatchAssetChanges(assetChange: AssetChangeInfo) {
+        this._assetDbInterop.onAssetChange(assetChange);
+    }
+
     /**
      * 从 asset-db 获取所有数据并构建，包含 ts 和 js 脚本。
      * AssetChange format:
@@ -361,14 +352,19 @@ export class PackerDriver {
      * @param assetChanges 资源变更列表
      * @param taskId 任务ID，用于跟踪任务状态
      */
-    public async build(assetChanges?: AssetChange[], taskId?: string) {
+    public async build(changeInfos?: AssetChangeInfo[], taskId?: string) {
         const logger = this._logger;
 
         logger.debug('Pulling asset-db.');
 
         const t1 = performance.now();
-        if (assetChanges && assetChanges.length > 0) {
+        if (changeInfos && changeInfos.length > 0) {
+            changeInfos.forEach(changeInfo => {
+                this._assetDbInterop.onAssetChange(changeInfo);
+            });
+            const assetChanges = this._assetDbInterop.getAssetChangeQueue();
             this._assetChangeQueue.push(...assetChanges);
+            this._assetDbInterop.resetAssetChangeQueue();
         }
         const t2 = performance.now();
 
@@ -497,14 +493,6 @@ export class PackerDriver {
         if (!(targetName in this._targets)) {
             console.warn(`Invalid pack target: ${targetName}. Existing targets are: ${Object.keys(this._targets)}`);
         }
-    }
-
-    public dispatchAssetChanges(type: AssetChangeType,
-        asset: IAsset
-        ) {
-        this._assetDbInterop.onAssetChange(type, asset);
-        const assetChanges = this._assetDbInterop.getAssetChangeQueue();
-        this._assetChangeQueue.push(...assetChanges);
     }
 
     /**

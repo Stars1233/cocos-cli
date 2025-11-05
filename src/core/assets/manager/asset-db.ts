@@ -1,6 +1,6 @@
 'use strict';
 
-import { AssetDBRegisterInfo, IAsset, IAssetDBInfo } from '../@types/private';
+import { AssetDBRegisterInfo, IAsset, IAssetDBInfo, IAssetInfo, QueryAssetsOption } from '../@types/private';
 import * as assetdb from '@cocos/asset-db';
 import EventEmitter from 'events';
 import { ensureDirSync, existsSync } from 'fs-extra';
@@ -14,7 +14,9 @@ import Utils from '../../base/utils';
 import assetConfig from '../asset-config';
 import { compileEffect, startAutoGenEffectBin } from '../asset-handler';
 import scripting from '../../scripting';
-import { DBChangeType } from '../../scripting/packer-driver/asset-db-interop';
+import { AssetChangeInfo, DBChangeType } from '../../scripting/packer-driver/asset-db-interop';
+import assetQuery from './query';
+import { AssetActionEnum } from '@cocos/asset-db/libs/asset';
 
 const AssetDBPriority: Record<string, number> = {
     internal: 99,
@@ -754,9 +756,25 @@ async function afterStartDB(dbInfoMap: Record<string, IAssetDBInfo>) {
         scripting.updateDatabases(dbInfo, DBChangeType.add);
     }
 
-    // 如果 temp 目录不存在
-    if (!existsSync(AssetDBManager.tempRoot)) {
-        
+    // 脚本系统未触发构建，启动脚本构建流程
+    if (!scripting.isTargetReady('editor')) {
+        const assetChanges: AssetChangeInfo[] = [];
+        const options: QueryAssetsOption = {
+            ccType: 'cc.Script',
+        };
+        const assetInfos = assetQuery.queryAssetInfos(options, ['meta', 'url', 'file', 'importer', 'type']) as IAssetInfo[];
+        assetInfos.map((assetInfo) => {
+            if (assetInfo.importer === 'javascript' || assetInfo.importer === 'typescript') {
+                assetChanges.push({
+                    type: AssetActionEnum.add,
+                    uuid: assetInfo.uuid,
+                    filePath: assetInfo.file,
+                    importer: assetInfo.importer,
+                    userData: assetInfo.meta?.userData || {},
+                });
+            }
+        });
+        await scripting.compileScripts(assetChanges);
     }
     // 目前结构里，没有关闭数据库的逻辑
 }
