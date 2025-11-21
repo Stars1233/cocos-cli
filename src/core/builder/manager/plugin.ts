@@ -1,18 +1,19 @@
 import EventEmitter from 'events';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { checkBuildCommonOptionsByKey, checkBundleCompressionSetting, commonOptionConfigs } from '../share/common-options-validator';
-import { builtinPlugins, NATIVE_PLATFORM, platformPlugins } from '../share/platforms-options';
+import { NATIVE_PLATFORM, platformPlugins } from '../share/platforms-options';
 import { validator, validatorManager } from '../share/validator-manager';
 import { checkConfigDefault, defaultMerge, defaultsDeep, getOptionsDefault, resolveToRaw } from '../share/utils';
-import { Platform, IConfigItem, IDisplayOptions, IBuildTaskOption, IConsoleType } from '../@types';
-import { IInternalBuildPluginConfig, IPlatformBuildPluginConfig, PlatformBundleConfig, IBuildStageItem, BuildCheckResult, BuildTemplateConfig, IConfigGroupsInfo, IPlatformConfig, ITextureCompressConfig, IBuildHooksInfo, IBuildCommandOption, MakeRequired } from '../@types/protected';
+import { Platform, IDisplayOptions, IBuildTaskOption, IConsoleType } from '../@types';
+import { IInternalBuildPluginConfig, IPlatformBuildPluginConfig, PlatformBundleConfig, IBuildStageItem, BuildCheckResult, BuildTemplateConfig, IConfigGroupsInfo, IPlatformConfig, ITextureCompressConfig, IBuildHooksInfo, IBuildCommandOption, MakeRequired, IBuilderConfigItem } from '../@types/protected';
 import Utils from '../../base/utils';
 import i18n from '../../base/i18n';
 import lodash from 'lodash';
 import { configGroups } from '../share/texture-compress';
 import { newConsole } from '../../base/console';
 import builderConfig, { } from '../share/builder-config';
-import { existsSync } from 'fs-extra';
+import { existsSync, readJSON } from 'fs-extra';
+import { GlobalPaths } from '../../../global';
 export interface InternalPackageInfo {
     name: string; // 插件名
     path: string; // 插件路径
@@ -22,11 +23,18 @@ export interface InternalPackageInfo {
     version: string; // 版本号
 }
 
-export interface IRegisterPlatformInfo {
+export interface IPlatformRegisterInfo {
+    config: IPlatformBuildPluginConfig;
     platform: Platform;
-    config: IInternalBuildPluginConfig | IPlatformBuildPluginConfig;
     path: string;
 }
+
+export interface IPluginRegisterInfo {
+    config: IInternalBuildPluginConfig;
+    platform: Platform;
+    path: string;
+}
+
 type ICustomAssetHandlerType = 'compressTextures';
 type IAssetHandlers = Record<ICustomAssetHandlerType, Record<string, Function>>;
 // 对外支持的对外公开的资源处理方法汇总
@@ -34,7 +42,7 @@ const CustomAssetHandlerTypes: ICustomAssetHandlerType[] = ['compressTextures'];
 export class PluginManager extends EventEmitter {
     // 平台选项信息
     public bundleConfigs: Record<string, PlatformBundleConfig> = {};
-    public commonOptionConfig: Record<string, Record<string, IConfigItem>> = {};
+    public commonOptionConfig: Record<string, Record<string, IBuilderConfigItem  & { verifyKey: string }>> = {};
     public pkgOptionConfigs: Record<string, Record<string, IDisplayOptions>> = {};
     public platformConfig: Record<string, IPlatformConfig> = {};
     public buildTemplateConfigMap: Record<string, BuildTemplateConfig> = {};
@@ -58,10 +66,6 @@ export class PluginManager extends EventEmitter {
     // 记录已注册的插件名称
     public packageRegisterInfo: Map<string, InternalPackageInfo> = new Map();
 
-    private enablePlatforms: Platform[] = [];
-
-    private _init = false;
-
     constructor() {
         super();
         const compsMap: any = {};
@@ -73,79 +77,35 @@ export class PluginManager extends EventEmitter {
         });
     }
 
-    async prepare(platforms: Platform[]) {
-        await Promise.allSettled(platforms.map(async (platform) => {
-            if (this.platformConfig[platform] && this.platformConfig[platform].name) {
-                return;
+    async prepare(platforms: Platform[], throwError?: boolean) {
+        await Promise.all(platforms.map(async (platform) => {
+            try {
+                if (this.platformConfig[platform] && this.platformConfig[platform].name) {
+                    return;
+                }
+                const platformRoot = join(__dirname, `../platforms/${platform}`);
+                const config = (await import(join(platformRoot, 'config.js'))).default;
+                await this.registerPlatform({
+                    platform,
+                    config: config,
+                    path: platformRoot,
+                });
+                console.log(`register platform ${platform} success!`);
+            } catch (error) {
+                if (throwError) {
+                    throw error;
+                }
+                console.error(error);
+                console.error(`register platform ${platform} failed!`);
             }
-            const platformRoot = join(__dirname, `../platforms/${platform}`);
-            if (!existsSync(platformRoot)) {
-                console.error(`Platform ${platform} not found`);
-                return;
-            }
-            const config = (await import(platformRoot));
-            this.configMap[platform] = {};
-            this.platformConfig[platform] = {} as IPlatformConfig;
-            await this.internalRegister({
-                platform,
-                config: config.default,
-                path: platformRoot,
-            });
         }));
+        
     }
 
-    protected async internalRegister(registerInfo: IRegisterPlatformInfo, pkgInfo?: InternalPackageInfo): Promise<void> {
-        const { platform, config, path } = registerInfo;
-        if (this.platformConfig[platform] && this.platformConfig[platform].name) {
-            return;
-        }
-        const pkgName = pkgInfo?.name || platform;
-        // 插件显示顺序需要由 service 提供查询接口
-        this.pkgPriorities[pkgName] = config.priority || (builtinPlugins.includes(pkgName) ? 1 : 0);
-
-        // 注册校验方法
-        if (typeof config.verifyRuleMap === 'object') {
-            for (const [ruleName, item] of Object.entries(config.verifyRuleMap)) {
-                // 添加以 平台 + 插件 作为 key 的校验规则
-                validatorManager.addRule(ruleName, item, platform + pkgName);
-            }
-        }
-
-        if (config.doc && !config.doc.startsWith('http')) {
-            config.doc = Utils.Url.getDocUrl(config.doc);
-        }
-        if (typeof config.options === 'object') {
-            lodash.set(this.pkgOptionConfigs, `${registerInfo.platform}.${pkgName}`, config.options);
-            Object.keys(config.options).forEach((key) => {
-                checkConfigDefault(config.options![key]);
-            });
-            await builderConfig.setProject(`platforms.${platform}.packages.${platform}`, getOptionsDefault(config.options), 'default');
-        }
-
-        if (config.customBuildStages) {
-            // 注册构建阶段性任务
-            this.customBuildStages[platform][pkgName] = config.customBuildStages;
-        }
-
-        // 整理通用构建选项的校验规则
-        if (config.commonOptions) {
-            // 此机制依赖了插件的启动顺序来写入配置
-            if (!this.commonOptionConfig[platform]) {
-                // 使用默认通用配置和首个插件自定义的通用配置进行融合
-                this.commonOptionConfig[platform] = Object.assign({}, lodash.defaultsDeep({}, config.commonOptions, JSON.parse(JSON.stringify(commonOptionConfigs))));
-            } else {
-                this.commonOptionConfig[platform] = defaultMerge({}, this.commonOptionConfig[platform], config.commonOptions || {});
-            }
-            const commonOptions: Record<string, IConfigItem> = config.commonOptions;
-            for (const key in commonOptions) {
-                if (commonOptions[key].verifyRules) {
-                    this.commonOptionConfig[platform][key] = Object.assign({}, this.commonOptionConfig[platform][key], {
-                        verifyKey: platform + pkgName,
-                    });
-                }
-            }
-        }
-
+    private async registerPlatform(registerInfo: IPlatformRegisterInfo) {
+        const { platform, config } = registerInfo;
+        this.configMap[platform] = {};
+        this.platformConfig[platform] = {} as IPlatformConfig;
         if (config.assetBundleConfig) {
             this.bundleConfigs[platform] = Object.assign(this.bundleConfigs[platform] || {}, {
                 platformType: config.assetBundleConfig.platformType,
@@ -175,18 +135,73 @@ export class PluginManager extends EventEmitter {
             }
             this.platformConfig[platform].texture = config.textureCompressConfig;
         }
-        if (config.platformName) {
-            this.platformConfig[platform].name = config.platformName;
-            this.platformConfig[platform].platformType = (config as IPlatformBuildPluginConfig).platformType;
+        this.platformConfig[platform].name = config.displayName;
+        this.platformConfig[platform].platformType = (config as IPlatformBuildPluginConfig).platformType;
+
+        if (config.buildTemplateConfig && config.buildTemplateConfig.templates.length) {
+            const label = config.displayName || platform;
+            this.platformConfig[platform].createTemplateLabel = label;
+            this.buildTemplateConfigMap[label] = config.buildTemplateConfig;
         }
         if (this.bundleConfigs[platform]) {
             this.platformConfig[platform].type = this.bundleConfigs[platform].platformType;
         }
+        await this.internalRegister(registerInfo);
+    }
 
-        if (config.customBuildStages) {
-            lodash.set(this.customBuildStagesMap, `${pkgName}.${platform}`, config.customBuildStages);
+    protected async internalRegister(registerInfo: IPluginRegisterInfo, pkgInfo?: InternalPackageInfo): Promise<void> {
+        const { platform, config, path } = registerInfo;
+        if (!this.platformConfig[platform] || !this.platformConfig[platform].name) {
+            throw new Error(`platform ${platform} has been registered!`);
         }
 
+        // TODO: register i18n
+        const pkgName = pkgInfo?.name || platform;
+        this.pkgPriorities[pkgName] = config.priority || (path.includes(GlobalPaths.workspace) ? 1 : 0);
+
+        // 注册校验方法
+        if (typeof config.verifyRuleMap === 'object') {
+            for (const [ruleName, item] of Object.entries(config.verifyRuleMap)) {
+                // 添加以 平台 + 插件 作为 key 的校验规则
+                validatorManager.addRule(ruleName, item, platform + pkgName);
+            }
+        }
+
+        if (config.doc && !config.doc.startsWith('http')) {
+            config.doc = Utils.Url.getDocUrl(config.doc);
+        }
+        if (typeof config.options === 'object') {
+            lodash.set(this.pkgOptionConfigs, `${registerInfo.platform}.${pkgName}`, config.options);
+            Object.keys(config.options).forEach((key) => {
+                checkConfigDefault(config.options![key]);
+            });
+            await builderConfig.setProject(`platforms.${platform}.packages.${platform}`, getOptionsDefault(config.options), 'default');
+        }
+
+        // 整理通用构建选项的校验规则
+        if (config.commonOptions) {
+            // 此机制依赖了插件的启动顺序来写入配置
+            if (!this.commonOptionConfig[platform]) {
+                // 使用默认通用配置和首个插件自定义的通用配置进行融合
+                this.commonOptionConfig[platform] = Object.assign({}, lodash.defaultsDeep({}, config.commonOptions, JSON.parse(JSON.stringify(commonOptionConfigs))));
+            } else {
+                this.commonOptionConfig[platform] = defaultMerge({}, this.commonOptionConfig[platform], config.commonOptions || {});
+            }
+            const commonOptions = config.commonOptions;
+            for (const key in commonOptions) {
+                if (commonOptions[key].verifyRules) {
+                    this.commonOptionConfig[platform][key] = Object.assign({}, this.commonOptionConfig[platform][key], {
+                        verifyKey: platform + pkgName,
+                    });
+                }
+            }
+        }
+        if (config.customBuildStages) {
+            // 注册构建阶段性任务
+            lodash.set(this.customBuildStages, `${platform}.${pkgName}`, config.customBuildStages);
+            lodash.set(this.customBuildStagesMap, `${pkgName}.${platform}`, config.customBuildStages);
+            await builderConfig.setProject(`platforms.${platform}.generateCompileConfig`, this.shouldGenerateOptions(platform), 'default');
+        }
         // ----------------------------------- 剔除平台分割线 -------------------------------
 
         this.pkgPriorities[pkgName] = config.priority || 0;
@@ -197,20 +212,14 @@ export class PluginManager extends EventEmitter {
             lodash.set(this.builderPathsMap, `${pkgName}.${platform}`, config.hooks);
         }
         // 注册构建模板菜单项
-        if (config.buildTemplateConfig && config.buildTemplateConfig.templates.length) {
-            config.buildTemplateConfig.pkgName = pkgName;
-            const label = config.displayName || config.platformName || pkgName;
-            this.platformConfig[platform].createTemplateLabel = label;
-            this.buildTemplateConfigMap[label] = config.buildTemplateConfig;
-        }
         console.debug(`[Build] internalRegister pkg(${pkgName}) in ${platform} platform success!`);
     }
 
-    public getCommonOptionConfigs(platform: Platform): Record<string, IConfigItem> {
+    public getCommonOptionConfigs(platform: Platform): Record<string, IBuilderConfigItem> {
         return this.commonOptionConfig[platform];
     }
 
-    public getCommonOptionConfigByKey(key: keyof IBuildTaskOption, options: IBuildTaskOption): IConfigItem | null {
+    public getCommonOptionConfigByKey(key: keyof IBuildTaskOption, options: IBuildTaskOption): IBuilderConfigItem | null {
         const config = this.commonOptionConfig[options.platform as Platform] && this.commonOptionConfig[options.platform as Platform][key] || {};
         if (commonOptionConfigs[key]) {
             const defaultConfig = JSON.parse(JSON.stringify(commonOptionConfigs[key]));
@@ -222,7 +231,7 @@ export class PluginManager extends EventEmitter {
         return config;
     }
 
-    public getPackageOptionConfigByKey(key: string, pkgName: string, options: IBuildTaskOption): IConfigItem | null {
+    public getPackageOptionConfigByKey(key: string, pkgName: string, options: IBuildTaskOption): IBuilderConfigItem | null {
         if (!key || !pkgName) {
             return null;
         }
@@ -233,7 +242,7 @@ export class PluginManager extends EventEmitter {
         return lodash.get(configs, key);
     }
 
-    public getOptionConfigByKey(key: keyof IBuildTaskOption, options: IBuildTaskOption): IConfigItem | null {
+    public getOptionConfigByKey(key: keyof IBuildTaskOption, options: IBuildTaskOption): IBuilderConfigItem | null {
         if (!key) {
             return null;
         }
@@ -286,7 +295,6 @@ export class PluginManager extends EventEmitter {
             if (key === 'packages') {
                 continue;
             }
-            // @ts-ignore
             const res = await this.checkCommonOptionByKey(key as keyof IBuildTaskOption, rightOptions[key], rightOptions);
             if (res && res.error && res.level === 'error') {
                 const errMsg = i18n.transI18nName(res.error) || res.error;
@@ -309,7 +317,6 @@ export class PluginManager extends EventEmitter {
                     }));
                 }
             }
-            // @ts-ignore
             rightOptions[key] = res.newValue;
         }
         const result = await this.checkPluginOptions(rightOptions);
@@ -322,7 +329,7 @@ export class PluginManager extends EventEmitter {
     }
 
     public async checkCommonOptions(options: IBuildTaskOption) {
-        const checkRes = {};
+        const checkRes: Record<string, BuildCheckResult> = {};
         for (const key of Object.keys(options)) {
             if (key === 'packages') {
                 continue;
@@ -433,6 +440,11 @@ export class PluginManager extends EventEmitter {
         return checkRes;
     }
 
+    public shouldGenerateOptions(platform: Platform): boolean {
+        const customBuildStageMap = this.customBuildStages[platform];
+        return !!Object.values(customBuildStageMap).find((stages) => stages.find((stageItem => stageItem.requiredBuildOptions !== false)));
+    }
+
     /**
      * 获取平台默认值
      * @param platform
@@ -500,9 +512,9 @@ export class PluginManager extends EventEmitter {
     }
 
     /**
- * 获取平台插件的构建路径信息
- * @param platform
- */
+     * 获取平台插件的构建路径信息
+     * @param platform
+     */
     public getHooksInfo(platform: Platform): IBuildHooksInfo {
         // 为了保障插件的先后注册顺序，采用了数组的方式传递
         const result: IBuildHooksInfo = {
@@ -512,7 +524,7 @@ export class PluginManager extends EventEmitter {
         Object.keys(this.builderPathsMap[platform]).forEach((pkgName) => {
             result.infos[pkgName] = {
                 path: this.builderPathsMap[platform][pkgName],
-                internal: builtinPlugins.includes(pkgName as Platform),
+                internal: pkgName === platform,
             };
         });
         result.pkgNameOrder = this.sortPkgNameWidthPriority(Object.keys(result.infos));

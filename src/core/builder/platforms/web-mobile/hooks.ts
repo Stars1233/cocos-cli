@@ -5,14 +5,13 @@ import { copyFileSync, outputFileSync } from 'fs-extra';
 import { basename, join } from 'path';
 import { InternalBuildResult, BuilderAssetCache, IBuilder, IInternalBuildOptions } from '../../@types/protected';
 import { relativeUrl, transformCode } from '../../worker/builder/utils';
-import { IBuildResult } from '../../@types/platforms/web-mobile';
-
+import { IBuildResult } from './type';
+import * as commonUtils from '../web-common/utils';
 export const throwError = true;
 
 export async function onAfterInit(options: IInternalBuildOptions<'web-mobile'>, result: InternalBuildResult, cache: BuilderAssetCache) {
 
     // 添加统计信息
-    const packageOptions = options.packages['web-mobile'];
     options.buildEngineParam.split = false;
     options.buildEngineParam.assetURLFormat = 'runtime-resolved';
     if (options.server && !options.server.endsWith('/')) {
@@ -116,3 +115,5 @@ export async function onAfterBuild(options: IInternalBuildOptions<'web-mobile'>,
     });
     outputFileSync(result.paths.settings, JSON.stringify(result.settings, null, options.debug ? 4 : 0));
 }
+
+export const run = commonUtils.run;
