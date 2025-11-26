@@ -18,8 +18,12 @@ tsconfig.tsbuildinfo
 **/node_modules/
 **/yarn.lock
 packages/engine/
+
 # packages
 packages/cc-module/editor
+packages/platforms/
+packages/cocos-cli-types/**/*
+!packages/cocos-cli-types/package.json
 
 # static
 static/tools/
