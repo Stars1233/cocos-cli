@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { ASSET_HANDLER_TYPES, SUPPORT_CREATE_TYPES } from '../../core/assets/@types/interface';
+import { SchemaUrlOrUUIDOrPath } from '../base/schema-identifier';
+
+export { SchemaUrlOrUUIDOrPath };
 
 // Basic type definitions // 基础类型定义
 export const SchemaDirOrDbPath = z.string().min(1).describe('Asset address, can be a file system path or a db:// protocol path'); // 资源地址，可以是文件系统路径或 db:// 协议路径
@@ -107,7 +110,6 @@ export const SchemaAssetInfo: z.ZodType<any> = z.lazy(() => z.object({
 }));
 
 // Asset query related // 资源查询相关
-export const SchemaUrlOrUUIDOrPath = z.string().min(1).describe('Asset URL, UUID or file path'); // 资源的 URL、UUID 或文件路径
 export const SchemaDataKeys = z.array(z.string().min(1)).optional().describe('List of asset information fields to query'); // 需要查询的资源信息字段列表
 export const SchemaQueryAssetsOption = z.object({
     ccType: z.union([z.string().min(1), z.array(z.string().min(1))]).optional().describe('Asset type, e.g. "cc.ImageAsset", can be single or array'), // 资源类型，如 "cc.ImageAsset"，可以是单个或数组

@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
-import { IPrefabInfo, NodeType } from '../../core/scene';
+import { NodeType } from '../../core/scene';
 import { INode } from '../../core/scene';
 import { SchemaQuat, SchemaVec3 } from '../base/schema-value-types';
 import { SchemaNodeIdentifier, SchemaComponentIdentifier } from '../base/schema-identifier';
 import { SchemaPrefabInfo } from './prefab-info-schema';
+import { SchemaUrl } from '../base/schema-identifier';
 
 // 节点属性的 schema，
 export const SchemaNodeProperty = z.object({
@@ -82,7 +83,7 @@ const SchemaNodeCreateBase = z.object({
 });
 
 export const SchemaNodeCreateByAsset = SchemaNodeCreateBase.extend({
-    dbURL: z.string().describe('Prefab asset path, if created from a prefab, please pass this parameter, format is custom db path e.g. db://assets/abc.prefab'), // 预制体资源路径，如果是从某个预制体创建，请传入这个参数，格式为自定义的db 路径比如 db://assets/abc.prefab
+    dbURL: SchemaUrl.describe('Prefab asset path, if created from a prefab, please pass this parameter, format is custom db path e.g. db://assets/abc.prefab'), // 预制体资源路径，如果是从某个预制体创建，请传入这个参数，格式为自定义的db 路径比如 db://assets/abc.prefab
 });
 
 export const SchemaNodeCreateByType = SchemaNodeCreateBase.extend({

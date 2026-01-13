@@ -1,6 +1,182 @@
 import { z } from 'zod';
 
-export const SchemaAssetUrlOrUUID = z.string().describe('Use db:// protocol format or UUID'); // 使用 db:// 协议格式或者 UUID
+const cleanStringWithMethods = (str: string): string => {
+    // 先去除两端空白
+    let result = str.trim();
+
+    // 使用 split 和 filter 移除控制字符
+    result = result.split('')
+        .filter(char => {
+            const code = char.charCodeAt(0);
+            return !(
+                (code >= 0x0000 && code <= 0x001F) || // C0控制字符
+                (code >= 0x007F && code <= 0x009F) || // C1控制字符
+                (code >= 0x200B && code <= 0x200F) || // 零宽空格等
+                (code >= 0x2028 && code <= 0x202F) || // 段落分隔符等
+                (code >= 0x205F && code <= 0x2060)    // 其他不可见字符
+            );
+        })
+        .join('');
+
+    return result;
+};
+
+const cleanBasicString = (value: string): string => {
+    return cleanStringWithMethods(value);
+};
+
+// 移除所有空白字符（用于 UUID 清理）
+const removeWhitespace = (str: string): string => {
+    return str.replace(/\s/g, '');
+};
+
+// ==================== 1. URL Schema (db:// 协议) ====================
+export const SchemaUrl = z.string()
+    .min(1, 'URL 不能为空')
+    .describe('db:// 协议格式的 URL')
+    .transform((value, ctx) => {
+        const cleaned = cleanBasicString(value);
+
+        // 必须以 db:// 开头
+        if (!cleaned.startsWith('db://')) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'URL 必须以 db:// 开头',
+            });
+            return z.NEVER;
+        }
+
+        // db:// 后必须有内容
+        if (cleaned === 'db://') {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'db:// 后必须包含有效路径',
+            });
+            return z.NEVER;
+        }
+
+        // 验证路径部分（去除协议部分）
+        const path = cleaned.substring(5);
+
+        // 路径不能为空
+        if (path.length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'URL 路径不能为空',
+            });
+            return z.NEVER;
+        }
+
+        // 路径只能包含合法字符
+        // 允许：字母、数字、下划线、连字符、点、斜杠
+        if (!/^[a-zA-Z0-9_\-./]+$/.test(path)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'URL 路径包含非法字符',
+            });
+            return z.NEVER;
+        }
+
+        return cleaned;
+    });
+
+// ==================== 2. UUID Schema ====================
+export const SchemaUUID = z.string()
+    .min(1, 'UUID 不能为空')
+    .describe('UUID 格式字符串')
+    .transform((value, ctx) => {
+        // 先去除所有空白字符，再移除连字符，然后转为小写
+        const cleaned = removeWhitespace(value).replace(/-/g, '').toLowerCase();
+
+        // 必须是 32 位十六进制字符
+        if (!/^[0-9a-f]{32}$/.test(cleaned)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: '无效的 UUID 格式',
+            });
+            return z.NEVER;
+        }
+
+        // 格式化为标准 UUID 格式：8-4-4-4-12
+        return `${cleaned.slice(0, 8)}-${cleaned.slice(8, 12)}-${cleaned.slice(12, 16)}-${cleaned.slice(16, 20)}-${cleaned.slice(20, 32)}`;
+    });
+
+// ==================== 3. Path Schema ====================
+export const SchemaPath = z.string()
+    .min(1, '路径不能为空')
+    .describe('文件路径')
+    .transform((value, ctx) => {
+        // 先去除两端空白
+        const trimmed = value.trim();
+
+        // 验证不是 db:// 协议
+        if (trimmed.startsWith('db://')) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: '路径不能以 db:// 开头，请使用 URL Schema',
+            });
+            return z.NEVER;
+        }
+
+        // 验证不是 UUID
+        const potentialUuid = removeWhitespace(trimmed).replace(/-/g, '').toLowerCase();
+        if (/^[0-9a-f]{32}$/.test(potentialUuid)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: '路径不能是 UUID 格式，请使用 UUID Schema',
+            });
+            return z.NEVER;
+        }
+
+        // 去除控制字符（但保留普通空格）
+        const withoutControlChars = trimmed.split('')
+            .filter(char => {
+                const code = char.charCodeAt(0);
+                return !(
+                    (code >= 0x0000 && code <= 0x001F) || // C0控制字符
+                    code === 0x007F ||                    // DEL字符
+                    (code >= 0x0080 && code <= 0x009F) || // C1控制字符
+                    (code >= 0x2028 && code <= 0x202F)    // 段落分隔符等
+                );
+            }).join('');
+
+        // 路径不能只包含分隔符
+        const withoutSeparators = withoutControlChars.replace(/[\\/]/g, '');
+        if (withoutSeparators.length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: '路径不能只包含分隔符',
+            });
+            return z.NEVER;
+        }
+
+        // 规范化路径分隔符（Windows 反斜杠转为正斜杠）
+        const normalized = withoutControlChars.replace(/\\/g, '/');
+
+        // 去除多余的分隔符（但保留开头的 // 用于网络路径）
+        let result = normalized;
+        if (!normalized.startsWith('//')) {
+            result = normalized.replace(/\/+/g, '/');
+        }
+
+        return result;
+    });
+
+// ==================== 组合 Schema ====================
+
+// URL 或 UUID 或 Path
+export const SchemaUrlOrUUIDOrPath = z.union([
+    SchemaUrl,
+    SchemaUUID,
+    SchemaPath,
+]).describe('Asset URL, UUID or file path'); // 资源的 URL、UUID 或文件路径
+
+// URL 或 UUID
+export const SchemaAssetUrlOrUUID = z.union([
+    SchemaUrl,
+    SchemaUUID,
+]).describe('Use db:// protocol format or UUID'); // 使用 db:// 协议格式或者 UUID 
+
 
 export const SchemaSceneIdentifier = z.object({
     assetName: z.string().describe('Scene or Prefab asset name'), // 场景/预制体资源名称

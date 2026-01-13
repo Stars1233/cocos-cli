@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { SchemaPrefabInfo } from './prefab-info-schema';
+import { SchemaUrl } from '../base/schema-identifier';
 
 // Create Prefab Options // 创建预制体参数
 export const SchemaCreatePrefabFromNodeOptions = z.object({
     /** Source node path to convert to prefab */ // 要转换为预制体的源节点路径
     nodePath: z.string().describe('Source node path to convert to prefab'), // 要转换为预制体的源节点路径
     /** Prefab asset save URL */ // 预制体资源保存 URL
-    dbURL: z.string().describe('Prefab asset save URL. Note: The final node name will change according to the resource name saved at the end of the URL'), // 预制体资源保存 URL，注意：最终节点名会跟着 URL 最后存的资源名进程变更
+    dbURL: SchemaUrl.describe('Prefab asset save URL. Note: The final node name will change according to the resource name saved at the end of the URL'), // 预制体资源保存 URL，注意：最终节点名会跟着 URL 最后存的资源名进程变更
     /** Whether to force overwrite existing resources */ // 是否强制覆盖现有资源
     overwrite: z.boolean().optional().describe('Whether to force overwrite existing resources'), // 是否强制覆盖现有资源
 }).describe('Create Prefab Options'); // 创建预制体参数
