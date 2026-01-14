@@ -150,16 +150,7 @@ export const SchemaPath = z.string()
             return z.NEVER;
         }
 
-        // 规范化路径分隔符（Windows 反斜杠转为正斜杠）
-        const normalized = withoutControlChars.replace(/\\/g, '/');
-
-        // 去除多余的分隔符（但保留开头的 // 用于网络路径）
-        let result = normalized;
-        if (!normalized.startsWith('//')) {
-            result = normalized.replace(/\/+/g, '/');
-        }
-
-        return result;
+        return withoutControlChars;
     });
 
 // ==================== 组合 Schema ====================
