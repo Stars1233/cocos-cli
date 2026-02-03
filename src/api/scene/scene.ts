@@ -36,15 +36,20 @@ export class SceneApi {
 
     @tool('scene-query-current')
     @title('Get current opened scene/prefab info') // 获取当前打开的场景/预制体信息
-    @description('Get current opened scene/prefab info, return null if none opened') // 获取当前打开场景/预制体信息，如果没有打开，返回 null
+    @description('Get current opened scene/prefab info, if no scene is opened, the data is not returned.') // 获取当前打开场景/预制体信息，如果没有打开，返回 null
     @result(SchemaCurrentResult)
     async queryCurrent(): Promise<CommonResultType<TCurrentResult>> {
         try {
             const data = await Scene.queryCurrent();
-            return {
+            const result = {
                 data: data as TCurrentResult,
                 code: COMMON_STATUS.SUCCESS,
             };
+            if (!data) {
+                delete (result as any).data;
+                (result as any).reason = 'No scene is currently open.';
+            }
+            return result;
         } catch (e) { 
             console.error(e);
             return {

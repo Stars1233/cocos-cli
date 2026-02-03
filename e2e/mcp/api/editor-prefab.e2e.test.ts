@@ -162,7 +162,7 @@ describe('MCP Editor Prefab API - Scene Operations on Prefab Assets', () => {
                 const result = await context.mcpClient.callTool('scene-query-current', {});
 
                 expect(result.code).toBe(200);
-                expect(result.data).toBeNull();
+                expect(result.data).toBeUndefined();
             });
         });
 
@@ -182,7 +182,7 @@ describe('MCP Editor Prefab API - Scene Operations on Prefab Assets', () => {
 
                 // 3. 验证预制体已关闭
                 const queryResult = await context.mcpClient.callTool('scene-query-current', {});
-                expect(queryResult.data).toBeNull();
+                expect(queryResult.data).toBeUndefined();
             });
         });
 

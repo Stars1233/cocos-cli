@@ -27,7 +27,7 @@ describe('MCP Scene API', () => {
             const result = await context.mcpClient.callTool('scene-query-current', {});
 
             expect(result.code).toBe(200);
-            expect(result.data).toBeNull();
+            expect(result.data).toBeUndefined();
         });
 
         test('should return current scene info after opening a scene', async () => {
@@ -41,7 +41,7 @@ describe('MCP Scene API', () => {
 
             expect(result.code).toBe(200);
             expect(result.data).toBeDefined();
-            expect(result.data).not.toBeNull();
+            expect(result.data).not.toBeUndefined();
 
             const data = result.data as { assetUrl: string, assetName: string, assetType: string, assetUuid: string };
             if (data) {
@@ -138,7 +138,7 @@ describe('MCP Scene API', () => {
 
             // 验证场景已关闭
             const queryResult = await context.mcpClient.callTool('scene-query-current', {});
-            expect(queryResult.data).toBeNull();
+            expect(queryResult.data).toBeUndefined();
         });
 
         test('should handle closing when no scene is open', async () => {
@@ -376,7 +376,7 @@ describe('MCP Scene API', () => {
                 // 3. 验证当前场景
                 const queryResult = await context.mcpClient.callTool('scene-query-current', {});
                 expect(queryResult.code).toBe(200);
-                expect(queryResult.data).not.toBeNull();
+                expect(queryResult.data).not.toBeUndefined();
                 const data = queryResult.data as { assetUrl: string };
                 expect(data?.assetUrl).toBe(sceneUrl);
 
@@ -397,7 +397,7 @@ describe('MCP Scene API', () => {
 
                 // 7. 验证场景已关闭
                 const finalQueryResult = await context.mcpClient.callTool('scene-query-current', {});
-                expect(finalQueryResult.data).toBeNull();
+                expect(finalQueryResult.data).toBeUndefined();
             }
         });
 
@@ -451,7 +451,7 @@ describe('MCP Scene API', () => {
                 await context.mcpClient.callTool('scene-close', {});
 
                 queryResult = await context.mcpClient.callTool('scene-query-current', {});
-                expect(queryResult.data).toBeNull();
+                expect(queryResult.data).toBeUndefined();
             }
         });
     });

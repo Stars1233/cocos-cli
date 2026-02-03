@@ -13,7 +13,7 @@ const SchemaScene = SchemaSceneIdentifier.extend({
     components: z.array(SchemaComponentIdentifier).default([]).describe('Component List'), // 节点上的组件列表
 }).describe('Scene/Prefab Info'); // 场景/预制体信息
 
-export const SchemaCurrentResult = z.union([SchemaScene, SchemaNode]).nullable().describe('Get Scene/Prefab Return Data'); // 获取场景/预制体返回数据
+export const SchemaCurrentResult = z.union([SchemaScene, SchemaNode]).describe('Get Scene/Prefab Return Data'); // 获取场景/预制体返回数据
 
 export const SchemaOpenResult = z.union([SchemaScene, SchemaNode]).describe('Open Scene/Prefab Result Info'); // 打开场景/预制体操作的结果信息
 
