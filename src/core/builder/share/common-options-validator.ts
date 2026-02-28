@@ -14,6 +14,7 @@ import assetManager from '../../assets/manager/asset';
 import { Engine } from '../../engine';
 import builderConfig from './builder-config';
 import { validatorManager } from './validator-manager';
+import { CocosConfigLoader } from '../../configuration/migration/cocos-config-loader';
 interface ModuleConfig {
     match: (module: string) => boolean;
     default: string | boolean;
@@ -431,6 +432,11 @@ export async function checkProjectSetting(options: IInternalBuildOptions | IInte
         options.includeModules = includeModules;
     }
 
+    // 确保 includeModules 中包含 'debug-renderer'
+    if (!options.includeModules.includes('debug-renderer')) {
+        options.includeModules.push('debug-renderer');
+    }
+
     if (!options.flags) {
         options.flags = {
             LOAD_BULLET_MANUALLY: false,
@@ -442,4 +448,31 @@ export async function checkProjectSetting(options: IInternalBuildOptions | IInte
         options.splashScreen = Engine.getConfig().splashScreen;
     }
 
+}
+
+/**
+ * 从项目配置中补充 includeModules
+ * 使用 CocosConfigLoader 加载 settings/v2/packages/engine.json 中的配置
+ * @param options 构建选项
+ */
+export async function fillIncludeModulesFromProjectConfig(options: IInternalBuildOptions | IInternalBundleBuildOptions | IBuildTaskOption): Promise<void> {
+    if (!options.includeModules || !options.includeModules.length) {
+        try {
+            const projectPath = builderConfig.projectRoot;
+            const configLoader = new CocosConfigLoader();
+            configLoader.initialize(projectPath);
+            const engineConfig = await configLoader.loadConfig('project', 'engine');
+            
+            if (engineConfig?.modules?.configs) {
+                const configs = engineConfig.modules.configs;
+                const globalConfigKey = engineConfig.modules.globalConfigKey || Object.keys(configs)[0];
+                
+                if (globalConfigKey && configs[globalConfigKey]?.includeModules) {
+                    options.includeModules = configs[globalConfigKey].includeModules;
+                }
+            }
+        } catch (error) {
+            console.warn(`[Build] 加载项目引擎配置失败，将使用默认配置: ${error}`);
+        }
+    }
 }

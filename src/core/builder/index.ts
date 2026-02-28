@@ -13,6 +13,7 @@ import utils from '../base/utils';
 import { middlewareService } from '../../server/middleware/core';
 import BuildMiddleware from './build.middleware';
 import { BuildGlobalInfo } from './share/global';
+import { fillIncludeModulesFromProjectConfig } from './share/common-options-validator';
 
 export async function init(platform?: string) {
     await builderConfig.init();
@@ -62,6 +63,9 @@ export async function build<P extends Platform>(platform: P, options?: IBuildCom
             return { code: BuildExitCode.PARAM_ERROR, reason: 'Check options failed! ' + String(error) };
         }
     }
+
+    // 从项目配置中补充 includeModules
+    await fillIncludeModulesFromProjectConfig(realOptions);
 
     let buildSuccess = true;
     const startTime = Date.now();
