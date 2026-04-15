@@ -23,7 +23,6 @@ import { PackerDriverLogger } from './logger';
 import { LanguageServiceAdapter } from '../language-service';
 import { AsyncDelegate } from '../utils/delegate';
 import JSON5 from 'json5';
-import minimatch from 'minimatch';
 import { existsSync } from 'fs';
 import { url2path } from '../../assets/utils';
 import { compressUuid } from '../../builder/worker/builder/utils';
@@ -522,7 +521,9 @@ export class PackerDriver {
                 target.deleteCacheFile((err as any).file);
                 continue;
             }
-            buildResult.depsGraph && (this._depsGraph = buildResult.depsGraph); // 更新依赖图
+            if (buildResult.depsGraph) {
+                this._depsGraph = buildResult.depsGraph;
+            }
             this._needUpdateDepsCache = true;
         }
         this._building = false;

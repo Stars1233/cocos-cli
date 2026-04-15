@@ -28,6 +28,9 @@ if (!utils.hasDevelopmentEnvironment()) return;
         // 编译引擎
         const { compileEngine } = require('../packages/engine-compiler/dist/index');
         await compileEngine(engine);
+
+        // compile for web
+        await compileEngine(engine, true);
     } catch (error) {
         console.log(error);
     }

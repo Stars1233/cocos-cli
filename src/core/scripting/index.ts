@@ -60,6 +60,7 @@ class ScriptManager {
     private _initialized = false;
     private _pendingCompileTimer: NodeJS.Timeout | null = null;
     private _pendingCompileTaskId: string | null = null;
+    private _projectPath: string = '';
 
     /**
      * 初始化Scripting模块
@@ -71,9 +72,14 @@ class ScriptManager {
         if (this._initialized) {
             return;
         }
+        this._projectPath = projectPath;
         const packerDriver = await PackerDriver.create(projectPath, enginePath);
         await packerDriver.init(features);
         this._initialized = true;
+    }
+
+    get projectPath() {
+        return this._projectPath;
     }
 
     /**
@@ -213,7 +219,7 @@ class ScriptManager {
                     quickPackLoaderContext,
                     cceModuleMap,
                 });
-                // eslint-disable-next-line no-undef
+                 
                 globalThis.self = window;
                 executor.addPolyfillFile(require.resolve('@cocos/build-polyfills/prebuilt/editor/bundle'));
             }

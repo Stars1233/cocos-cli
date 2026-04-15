@@ -143,8 +143,11 @@ export interface AssetChangeInfo {
     uuid: string;
     filePath: string;
     importer: string;
-    userData: Object;
+    userData: object;
 }
+
+export type UUID = string;
+export type FilePath = string;
 
 export interface AssetChange {
     type: AssetChangeType;

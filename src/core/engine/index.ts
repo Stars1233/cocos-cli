@@ -358,6 +358,56 @@ class EngineManager implements IEngine {
         return this;
     }
 
+    async getGameConfig(serverURL: string, importBase: string, nativeBase: string, isPreview?: boolean) {
+        const { physicsConfig, macroConfig, customLayers, sortingLayers, highQuality } = this.getConfig();
+        const bundles = assetManager.queryAssets({ isBundle: true }).map((item: any) => item.meta?.userData?.bundleName ?? item.name);
+        const builtinAssets = serverURL && await this.queryInternalAssetList(this.getInfo().typescript.path);
+        return {
+            debugMode: cc.debug.DebugMode.WARN,
+            overrideSettings: {
+                engine: {
+                    builtinAssets: builtinAssets || [],
+                    macros: macroConfig,
+                    sortingLayers,
+                    customLayers: customLayers.map((layer: any) => {
+                        const index = layerMask.findIndex((num) => { return layer.value === num; });
+                        return {
+                            name: layer.name,
+                            bit: index,
+                        };
+                    }),
+                },
+                profiling: {
+                    showFPS: isPreview ? true : false,
+                },
+                screen: {
+                    frameRate: 30,
+                    exactFitScreen: true,
+                },
+                rendering: {
+                    renderMode: 2,
+                    highQualityMode: highQuality,
+                },
+                physics: {
+                    ...physicsConfig,
+                    // 物理引擎如果没有明确设置，默认是开启的，因此需要明确定义为false
+                    enabled: serverURL ? true : false,
+                },
+                assets: {
+                    importBase: importBase,
+                    nativeBase: nativeBase,
+                    remoteBundles: ['internal', 'main'].concat(bundles),
+                    server: serverURL,
+                }
+            },
+            exactFitScreen: true,
+        };
+    }
+
+    getModules(): string[] {
+        return this.getConfig().includeModules || [];
+    }
+
     async queryInternalAssetList(enginePath: string) {
         // 添加引擎依赖的预加载内置资源到主包内
         const ccConfigJson = await fse.readJSON(join(enginePath, 'cc.config.json'));

@@ -5,6 +5,7 @@ import { Rpc } from '../rpc';
 import { BaseService, register } from './core';
 import { IScriptEvents, IScriptService } from '../../common';
 import utils from '../../../base/utils';
+import { serviceManager } from './service-manager';
 
 /**
  * 异步迭代。有以下特点：
@@ -166,9 +167,12 @@ export class ScriptService extends BaseService<IScriptEvents> implements IScript
             importExceptionHandler: (...args) => this._handleImportException(...args),
             cceModuleMap,
         });
-        // eslint-disable-next-line no-undef
+
         globalThis.self = window;
-        this._executor.addPolyfillFile(require.resolve('@cocos/build-polyfills/prebuilt/editor/bundle'));
+        const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+        if (!isBrowser && typeof require !== 'undefined' && require.resolve) {
+            this._executor.addPolyfillFile(require.resolve('@cocos/build-polyfills/prebuilt/editor/bundle'));
+        }
         // 同步插件脚本列表
         await this._syncPluginScripts.nextIteration();
         // 重载项目与插件脚本
@@ -275,7 +279,7 @@ export class ScriptService extends BaseService<IScriptEvents> implements IScript
             loadPluginInEditor: true,
         }]))
             .then((pluginScripts) => {
-                this._executor.setPluginScripts(pluginScripts);
+                this._executor.setPluginScripts(pluginScripts || []);
             })
             .catch((reason) => {
                 console.error(reason);

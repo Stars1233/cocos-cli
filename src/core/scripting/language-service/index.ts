@@ -9,6 +9,8 @@ import { AwaitCommand, Command, RenameCommand } from './command';
 import { asserts } from '../utils/asserts';
 import { scriptConfig } from '../shared/query-shared-settings';
 
+export type FilePath = string;
+
 /**
  * 这个类用来处理内存中的文件
  */

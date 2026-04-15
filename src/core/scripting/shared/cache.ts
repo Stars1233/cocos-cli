@@ -1,5 +1,8 @@
 /// 这个模块存放公用的缓存
 
+export type MTime = string;
+export type FilePath = string;
+
 export interface TypeScriptAssetInfoCache {
     version?: MTime,
     content?: string,

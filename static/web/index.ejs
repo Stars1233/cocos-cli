@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title><%= title %></title>
+    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="renderer" content="webkit"/>
+    <meta name="force-rendering" content="webkit"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="full-screen" content="yes"/>
+    <meta name="x5-fullscreen" content="true"/>
+    <meta name="360-fullscreen" content="true"/>
+    <meta name="screen-orientation" content=""/>
+    <meta name="x5-orientation" content="">
+    <meta name="x5-page-mode" content="app">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        #GameCanvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="GameDiv" class="wrapper">
+        <div id="Cocos3dGameContainer">
+            <canvas id="GameCanvas" tabindex="-1" style="background-color: '';"></canvas>
+        </div>
+    </div>
+
+    <script>
+        window.WebEnv = {
+            serverURL: '<%= serverURL %>',
+            engineDistPath: '<%= engineDistPath %>',
+            packImportMapURL: '<%= packImportMapURL %>',
+            packResolutionDetailMapURL: '<%= packResolutionDetailMapURL %>',
+            enginePath: '<%= enginePath %>',
+            projectPath: '<%= projectPath %>'
+        };
+    </script>
+    <script type="module" src="/static/web/boot.js"></script>
+    <script type="module">
+        window.addEventListener('click', async () => {
+            await import("/static/web/load-scene.js");
+            window.loadScene(WebEnv.serverURL);
+        });
+    </script>
+</body>
+</html>

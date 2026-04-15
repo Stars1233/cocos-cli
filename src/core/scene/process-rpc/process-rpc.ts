@@ -84,6 +84,8 @@ export class ProcessRPC<TModules extends Record<string, any>> {
     private msgId = 0;
     private process: NodeJS.Process | ChildProcess | undefined;
     private onMessageBind = this.onMessage.bind(this);
+    private serverUrl: string | undefined;
+    private isWebMode = false;
 
     /**
      * @param proc - NodeJS.Process 或 ChildProcess 实例
@@ -91,7 +93,18 @@ export class ProcessRPC<TModules extends Record<string, any>> {
     attach(proc: NodeJS.Process | ChildProcess) {
         this.dispose();
         this.process = proc;
+        this.isWebMode = false;
         this.listen();
+    }
+
+    /**
+     * 设置 Web 传输模式（浏览器环境使用）
+     * @param baseUrl - 服务器基础连接
+     */
+    setWebTransport(baseUrl: string) {
+        this.dispose();
+        this.serverUrl = baseUrl;
+        this.isWebMode = true;
     }
 
     /**
@@ -110,6 +123,8 @@ export class ProcessRPC<TModules extends Record<string, any>> {
         this.callbacks.clear();
         this.process?.off('message', this.onMessageBind);
         this.process = undefined;
+        this.serverUrl = undefined;
+        this.isWebMode = false;
     }
 
     /**
@@ -194,6 +209,27 @@ export class ProcessRPC<TModules extends Record<string, any>> {
             : [args: Parameters<TModules[K][M]>, options?: RequestOptions]
     ): Promise<Awaited<ReturnType<TModules[K][M]>>> {
         const [args, options] = rest;
+
+        if (this.isWebMode && this.serverUrl) {
+            const url = `${this.serverUrl}/rpc/${String(module)}/${String(method)}`;
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(args || [])
+            }).then(async (res) => {
+                if (res.ok) {
+                    const rpcRes = (await res.json()) as RpcResponse;
+                    if (rpcRes.error) {
+                        throw new Error(rpcRes.error);
+                    }
+                    return rpcRes.result;
+                }
+                throw new Error(`RPC request failed with status: ${res.status}`);
+            });
+        }
+
         return new Promise((resolve, reject) => {
             const id = ++this.msgId;
 
@@ -219,10 +255,25 @@ export class ProcessRPC<TModules extends Record<string, any>> {
             });
 
             if (!this.process) {
-                throw new Error('未挂载进程');
+                throw new Error('RPC 尚未挂载进程且未开启 Web 模式');
             }
             this.process.send?.(req);
         });
+    }
+
+    /**
+     * 直接执行本地注册的模块方法（用于服务器接收到基于 HTTP 的 RPC 请求时直接处理）
+     */
+    async executeLocal<K extends keyof TModules, M extends keyof TModules[K]>(
+        module: K,
+        method: M,
+        args: any[]
+    ): Promise<Awaited<ReturnType<TModules[K][M]>>> {
+        const target = this.handlers[module as string];
+        if (!target || typeof target[method as string] !== 'function') {
+            throw new Error(`Method not found: ${String(module)}.${String(method)}`);
+        }
+        return await target[method as string](...(args || []));
     }
 
     /**

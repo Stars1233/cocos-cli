@@ -14,8 +14,8 @@ import {
     ReloadResult,
 } from '../../common';
 import { PrefabEditor, SceneEditor } from './editors';
-import { Rpc } from '../rpc';
 import { IAssetInfo } from '../../../assets/@types/public';
+import { Rpc } from '../rpc';
 
 /**
  * EditorAsset - 统一的编辑器管理入口

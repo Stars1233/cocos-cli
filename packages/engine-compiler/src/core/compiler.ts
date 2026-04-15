@@ -1,12 +1,12 @@
 import { QuickCompiler } from '@cocos/quick-compiler';
 import { StatsQuery } from '@cocos/ccbuild';
 import { editorBrowserslistQuery } from '@cocos/lib-programming/dist/utils';
-import { dirname, join } from 'path';
-import { emptyDir, ensureDir, outputFile, readFile, readJSONSync, remove, existsSync, mkdirSync, copyFileSync } from 'fs-extra';
+import * as ps from 'path';
+import * as fsExtra from 'fs-extra';
 import { IFeatureItem, IModuleItem, ModuleRenderConfig } from './modules';
 
 const VERSION = '3';
-const TEMP_ENGINE_CONFIG: any = { "configs": { "defaultConfig": { "name": "默认配置", "cache": { "base": { "_value": true }, "gfx-webgl": { "_value": true }, "gfx-webgl2": { "_value": false }, "gfx-webgpu": { "_value": false }, "animation": { "_value": true }, "skeletal-animation": { "_value": true }, "3d": { "_value": true }, "meshopt": { "_value": false }, "2d": { "_value": true }, "sorting-2d": { "_value": false }, "rich-text": { "_value": true }, "mask": { "_value": true }, "graphics": { "_value": true }, "ui-skew": { "_value": true }, "affine-transform": { "_value": true }, "ui": { "_value": true }, "particle": { "_value": true }, "physics": { "_value": true, "_option": "physics-physx" }, "physics-ammo": { "_value": true, "_flags": { "LOAD_BULLET_MANUALLY": false } }, "physics-cannon": { "_value": false }, "physics-physx": { "_value": false, "_flags": { "LOAD_PHYSX_MANUALLY": false } }, "physics-builtin": { "_value": false }, "physics-2d": { "_value": true, "_option": "physics-2d-box2d" }, "physics-2d-box2d": { "_value": true }, "physics-2d-box2d-wasm": { "_value": false, "_flags": { "LOAD_BOX2D_MANUALLY": false } }, "physics-2d-builtin": { "_value": false }, "physics-2d-box2d-jsb": { "_value": false }, "intersection-2d": { "_value": true }, "primitive": { "_value": true }, "profiler": { "_value": true }, "occlusion-query": { "_value": false }, "geometry-renderer": { "_value": false }, "debug-renderer": { "_value": false }, "particle-2d": { "_value": true }, "audio": { "_value": true }, "video": { "_value": true }, "webview": { "_value": true }, "tween": { "_value": true }, "websocket": { "_value": true }, "websocket-server": { "_value": false }, "terrain": { "_value": true }, "light-probe": { "_value": true }, "tiled-map": { "_value": true }, "vendor-google": { "_value": false }, "spine": { "_value": true, "_option": "spine-3.8" }, "spine-3.8": { "_value": true, "_flags": { "LOAD_SPINE_MANUALLY": false } }, "spine-4.2": { "_value": false, "_flags": { "LOAD_SPINE_MANUALLY": false } }, "dragon-bones": { "_value": true }, "marionette": { "_value": true }, "procedural-animation": { "_value": true }, "custom-pipeline-post-process": { "_value": false }, "render-pipeline": { "_value": true, "_option": "custom-pipeline" }, "custom-pipeline": { "_value": true }, "legacy-pipeline": { "_value": false }, "xr": { "_value": false } }, "flags": { "LOAD_BULLET_MANUALLY": false, "LOAD_SPINE_MANUALLY": false, "LOAD_PHYSX_MANUALLY": false }, "includeModules": ["2d", "3d", "affine-transform", "animation", "audio", "base", "custom-pipeline", "dragon-bones", "gfx-webgl", "graphics", "intersection-2d", "light-probe", "marionette", "mask", "particle", "particle-2d", "physics-2d-box2d", "physics-physx", "primitive", "procedural-animation", "profiler", "rich-text", "skeletal-animation", "spine-3.8", "terrain", "tiled-map", "tween", "ui", "ui-skew", "video", "websocket", "webview"], "noDeprecatedFeatures": { "value": false, "version": "" } } }, "globalConfigKey": "defaultConfig", "graphics": { "pipeline": "custom-pipeline", "custom-pipeline-post-process": false } };
+const TEMP_ENGINE_CONFIG: any = { configs: { defaultConfig: { name: '默认配置', cache: { base: { _value: true }, 'gfx-webgl': { _value: true }, 'gfx-webgl2': { _value: false }, 'gfx-webgpu': { _value: false }, animation: { _value: true }, 'skeletal-animation': { _value: true }, '3d': { _value: true }, meshopt: { _value: false }, '2d': { _value: true }, 'sorting-2d': { _value: false }, 'rich-text': { _value: true }, mask: { _value: true }, graphics: { _value: true }, 'ui-skew': { _value: true }, 'affine-transform': { _value: true }, ui: { _value: true }, particle: { _value: true }, physics: { _value: true, _option: 'physics-physx' }, 'physics-ammo': { _value: true, _flags: { LOAD_BULLET_MANUALLY: false } }, 'physics-cannon': { _value: false }, 'physics-physx': { _value: false, _flags: { LOAD_PHYSX_MANUALLY: false } }, 'physics-builtin': { _value: false }, 'physics-2d': { _value: true, _option: 'physics-2d-box2d' }, 'physics-2d-box2d': { _value: true }, 'physics-2d-box2d-wasm': { _value: false, _flags: { LOAD_BOX2D_MANUALLY: false } }, 'physics-2d-builtin': { _value: false }, 'physics-2d-box2d-jsb': { _value: false }, 'intersection-2d': { _value: true }, primitive: { _value: true }, profiler: { _value: true }, 'occlusion-query': { _value: false }, 'geometry-renderer': { _value: false }, 'debug-renderer': { _value: false }, 'particle-2d': { _value: true }, audio: { _value: true }, video: { _value: true }, webview: { _value: true }, tween: { _value: true }, websocket: { _value: true }, 'websocket-server': { _value: false }, terrain: { _value: true }, 'light-probe': { _value: true }, 'tiled-map': { _value: true }, 'vendor-google': { _value: false }, spine: { _value: true, _option: 'spine-3.8' }, 'spine-3.8': { _value: true, _flags: { LOAD_SPINE_MANUALLY: false } }, 'spine-4.2': { _value: false, _flags: { LOAD_SPINE_MANUALLY: false } }, 'dragon-bones': { _value: true }, marionette: { _value: true }, 'procedural-animation': { _value: true }, 'custom-pipeline-post-process': { _value: false }, 'render-pipeline': { _value: true, _option: 'custom-pipeline' }, 'custom-pipeline': { _value: true }, 'legacy-pipeline': { _value: false }, xr: { _value: false } }, flags: { LOAD_BULLET_MANUALLY: false, LOAD_SPINE_MANUALLY: false, LOAD_PHYSX_MANUALLY: false }, includeModules: ['2d', '3d', 'affine-transform', 'animation', 'audio', 'base', 'custom-pipeline', 'dragon-bones', 'gfx-webgl', 'graphics', 'intersection-2d', 'light-probe', 'marionette', 'mask', 'particle', 'particle-2d', 'physics-2d-box2d', 'physics-physx', 'primitive', 'procedural-animation', 'profiler', 'rich-text', 'skeletal-animation', 'spine-3.8', 'terrain', 'tiled-map', 'tween', 'ui', 'ui-skew', 'video', 'websocket', 'webview'], noDeprecatedFeatures: { value: false, version: '' } } }, globalConfigKey: 'defaultConfig', graphics: { pipeline: 'custom-pipeline', 'custom-pipeline-post-process': false } };
 interface IRebuildOptions {
     debugNative?: boolean;
     isNativeScene?: boolean;
@@ -23,42 +23,46 @@ export class EngineCompiler {
     private editorFeaturesCache: string[] = [];
     private outDir: string = '';
     private statsQuery: StatsQuery | null = null;
+    private isWeb: boolean;
+
     private constructor(
         private enginePath: string,
+        isWeb: boolean = false,
     ) {
-        this.outDir = join(enginePath, 'bin', '.cache', 'dev-cli');
+        this.outDir = ps.join(enginePath, 'bin', '.cache', 'dev-cli');
+        this.isWeb = isWeb;
     }
 
     public getOutDir(): string {
         return this.outDir;
     }
 
-    static create(path: string) {
-        return new EngineCompiler(path);
+    static create(path: string, isWeb?: boolean) {
+        return new EngineCompiler(path, isWeb);
     }
 
     async compile(force: boolean = false): Promise<void> {
         // 发布之后不需要编译内置引擎
         // 开始第一次编译引擎
-        const versionFile = join(this.outDir, 'VERSION');
+        const versionFile = ps.join(this.outDir, 'VERSION');
 
         let needClear = false;
         try {
-            const version = await readFile(versionFile, 'utf8');
+            const version = await fsExtra.readFile(versionFile, 'utf8');
             if (version !== VERSION) {
                 needClear = true;
             }
         } catch {
             needClear = true;
         }
-        this.compiler = await this.generateCompiler();
+        this.compiler = await this.generateCompiler({ isWebview: this.isWeb });
         const isNativeScene = false;
 
         const debugNative = false;
 
         if (needClear) {
             console.debug('[EditorQuickCompiler]Version information lost.');
-            await emptyDir(this.outDir);
+            await this.clear();
         } else {
             console.debug('[EditorQuickCompiler]Version information looks good.');
         }
@@ -71,10 +75,10 @@ export class EngineCompiler {
         this.statsQuery = this.statsQuery || await StatsQuery.create(this.enginePath);
     }
 
-    async generateCompiler(options?: { isNative?: boolean }): Promise<QuickCompiler> {
-        const logFile = join(this.enginePath, 'bin', '.cache', 'logs', 'log.txt');
+    async generateCompiler(options?: { isNative?: boolean, isWebview?: boolean }): Promise<QuickCompiler> {
+        const logFile = ps.join(this.enginePath, 'bin', '.cache', 'logs', 'log.txt');
         if (logFile) {
-            await ensureDir(dirname(logFile));
+            await fsExtra.ensureDir(ps.dirname(logFile));
         }
         this.statsQuery = this.statsQuery || await StatsQuery.create(this.enginePath);
         let allFeatures = this.statsQuery.getFeatures();
@@ -108,6 +112,10 @@ export class EngineCompiler {
                 DEBUG: true,
             },
         };
+        if (options?.isWebview) {
+            env.platform = 'HTML5'; // Webview targeting HTML5 platform
+        }
+
         const featureUnitPrefix = 'cce:/internal/x/cc-fu/'; // cc-fu -> cc feature unit
         if (options?.isNative) {
             env.platform = 'NATIVE';
@@ -121,7 +129,7 @@ export class EngineCompiler {
 
             const editorFeatures = await this.filterEngineModules(env, allFeatures);
             this.editorFeaturesCache.push(...editorFeatures);
-            const nativeOutDir = join(this.enginePath, 'bin/.editor');
+            const nativeOutDir = ps.join(this.enginePath, 'bin/.editor');
             return new QuickCompiler({
                 rootDir: this.enginePath,
                 outDir: nativeOutDir,
@@ -143,14 +151,16 @@ export class EngineCompiler {
         } else {
             const editorFeatures = await this.filterEngineModules(env, allFeatures);
             this.editorFeaturesCache.push(...editorFeatures);
+            const outputDir = options?.isWebview ? ps.join(this.outDir, 'web') : ps.join(this.outDir, 'editor');
+
             return new QuickCompiler({
                 rootDir: this.enginePath,
-                outDir: this.outDir,
+                outDir: outputDir,
                 platform: env.platform,
                 targets: [
                     {
                         featureUnitPrefix,
-                        dir: join(this.outDir, 'editor'),
+                        dir: outputDir,
                         format: 'systemjs',
                         // inlineSourceMap: true,
                         // 使用 indexed source map 加快编译速度：
@@ -164,13 +174,6 @@ export class EngineCompiler {
                         loader: true, // 编辑器里没有 SystemJS，所以需要生成 loader
                         loose: true, // TODO(cjh): 当前 ccbuild 构建强制使用了 loose 模式且后面一个 preview target 也是强制开启，先把当前 editor target 也开启 loose 模式，临时修复 Though the "loose" option was set to "false" in your @babel/preset-env config ... 问题。后续需要考虑使用项目设置中的「宽松模式」设置选项。
                     },
-                    // {
-                    //     featureUnitPrefix,
-                    //     dir: join(this.outDir, 'preview'),
-                    //     format: 'systemjs',
-                    //     loose: true,
-                    //     // indexedSourceMap: true,
-                    // },
                 ],
                 logFile,
             });
@@ -235,8 +238,8 @@ export class EngineCompiler {
             await this.updateAdapter();
             await this.compiler.build();
             await this.rebuildImportMaps();
-            const versionFile = join(this.outDir, 'VERSION');
-            await outputFile(versionFile, VERSION, { encoding: 'utf8' });
+            const versionFile = ps.join(this.outDir, 'VERSION');
+            await fsExtra.outputFile(versionFile, VERSION, { encoding: 'utf8' });
 
             // eslint-disable-next-line no-useless-catch
         } catch (error) {
@@ -250,34 +253,34 @@ export class EngineCompiler {
 
     async clear() {
         try {
-            await remove(this.outDir);
+            const clearPath = ps.join(this.outDir, this.isWeb ? 'web' : 'editor');
+            await fsExtra.remove(clearPath);
         } catch (error) { }
     }
 
     async compileEngine(directory: string, force?: boolean, options?: IRebuildOptions) {
         this.enginePath = directory;
-        this.outDir = join(directory, 'bin', '.cache', 'dev-cli');
-        // 发布之后不需要编译内置引擎
+        // this.outDir = join(directory, 'bin', '.cache', 'dev-cli'); // Removed to avoid overriding constructor-init outDir
         // 开始第一次编译引擎
-        const versionFile = join(this.outDir, 'VERSION');
+        const versionFile = ps.join(this.outDir, 'VERSION');
 
         let needClear = false;
         try {
-            const version = await readFile(versionFile, 'utf8');
+            const version = await fsExtra.readFile(versionFile, 'utf8');
             if (version !== VERSION) {
                 needClear = true;
             }
         } catch {
             needClear = true;
         }
-        this.compiler = await this.generateCompiler();
+        this.compiler = await this.generateCompiler({ isWebview: this.isWeb });
         const isNativeScene = options && options.isNativeScene && await this.getIsSceneNative();
 
         const debugNative = false;
 
         if (needClear) {
             console.debug('[EditorQuickCompiler] Version information lost.');
-            await emptyDir(this.outDir);
+            await this.clear();
         } else {
             console.debug('[EditorQuickCompiler] Version information looks good.');
         }
@@ -299,7 +302,7 @@ export class EngineCompiler {
     }
 
     queryEnvLimitModule() {
-        const modulesInfo: ModuleRenderConfig = readJSONSync(join(this.enginePath, 'editor', 'engine-features', 'render-config.json'));
+        const modulesInfo: ModuleRenderConfig = fsExtra.readJSONSync(ps.join(this.enginePath, 'editor', 'engine-features', 'render-config.json'));
 
         const envLimitModule: IEnvLimitModule = {};
         const stepModule = (moduleKey: string, moduleItem: IFeatureItem) => {
@@ -330,21 +333,21 @@ export class EngineCompiler {
         try {
             let isSuccess = true;
 
-            const nativeOutDir = join(this.enginePath, 'bin/.editor');
-            const webAdapter = join(this.enginePath, 'bin/adapter/nodejs/web-adapter.js');
-            if (!existsSync(nativeOutDir)) {
-                mkdirSync(nativeOutDir);
+            const nativeOutDir = ps.join(this.enginePath, 'bin/.editor');
+            const webAdapter = ps.join(this.enginePath, 'bin/adapter/nodejs/web-adapter.js');
+            if (!fsExtra.existsSync(nativeOutDir)) {
+                fsExtra.mkdirSync(nativeOutDir);
             }
-            if (existsSync(webAdapter)) {
-                const output = join(nativeOutDir, 'web-adapter.js');
-                copyFileSync(webAdapter, output);
+            if (fsExtra.existsSync(webAdapter)) {
+                const output = ps.join(nativeOutDir, 'web-adapter.js');
+                fsExtra.copyFileSync(webAdapter, output);
             } else {
                 isSuccess = false;
                 console.error(`${webAdapter} not exist, please build engine first`);
             }
-            const engineAdapter = join(this.enginePath, 'bin/adapter/nodejs/engine-adapter.js');
-            if (existsSync(engineAdapter)) {
-                copyFileSync(engineAdapter, join(nativeOutDir, 'engine-adapter.js'));
+            const engineAdapter = ps.join(this.enginePath, 'bin/adapter/nodejs/engine-adapter.js');
+            if (fsExtra.existsSync(engineAdapter)) {
+                fsExtra.copyFileSync(engineAdapter, ps.join(nativeOutDir, 'engine-adapter.js'));
             } else {
                 isSuccess = false;
                 console.error(`${engineAdapter} not exist, please build engine first`);

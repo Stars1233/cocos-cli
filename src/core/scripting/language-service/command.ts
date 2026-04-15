@@ -1,6 +1,6 @@
 import { join } from 'path';
 import ts, { TextChange } from 'typescript';
-import { LanguageServiceAdapter } from '.';
+import { LanguageServiceAdapter, FilePath } from '.';
 import { DbURLInfo } from '../intelligence';
 import { asserts } from '../utils/asserts';
 import { dbURLRoot, removeTSExt, resolveFileName } from '../utils/path';

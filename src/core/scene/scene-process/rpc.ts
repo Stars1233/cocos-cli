@@ -11,14 +11,19 @@ export class RpcProxy {
         return this.rpcInstance;
     }
 
-    async startup() {
+    async startup(options?: { serverURL: string }) {
         // 在创建新实例前，先清理旧实例，防止内存泄漏
         this.dispose();
         this.rpcInstance = new ProcessRPC<IMainModule>();
-        this.rpcInstance.attach(process);
-        const { Service } = await import('./service/core/decorator');
-        this.rpcInstance.register(Service);
-        console.log('[Scene] Scene Process RPC ready');
+        if (options?.serverURL) {
+            this.rpcInstance.setWebTransport(options.serverURL);
+            console.log('[Scene] Scene Process Web RPC ready');
+        } else {
+            this.rpcInstance.attach(process);
+            const { Service } = await import('./service/core/decorator');
+            this.rpcInstance.register(Service);
+            console.log('[Scene] Scene Process RPC ready');
+        }
     }
 
     /**

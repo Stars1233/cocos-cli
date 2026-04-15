@@ -49,12 +49,18 @@ type ServiceEventType = typeof SERVICE_EVENTS_MAP[keyof typeof SERVICE_EVENTS_MA
 export class ServiceManager {
     private initialized = false;
     private eventHandlers = new Map<string, (...args: any[]) => void>();
+    private serverUrl: string = '';
 
-    initialize() {
+    initialize(serverUrl: string) {
         if (this.initialized) return;
         this.initialized = true;
+        this.serverUrl = serverUrl;
         this.unregisterAutoForwardEvents();
         this.registerAutoForwardEvents();
+    }
+
+    getServerUrl() {
+        return this.serverUrl;
     }
 
     private registerAutoForwardEvents() {

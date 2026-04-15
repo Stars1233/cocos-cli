@@ -21,3 +21,7 @@ export async function initEngine(enginePath: string, projectPath: string, server
     return await initEngine(enginePath, projectPath, serverURL);
 }
 
+export async function startEngineCompilation(force: boolean = false) {
+    const { startCompileEngineProcess } = await import('../../core/engine/compile-process');
+    await startCompileEngineProcess(force);
+}
