@@ -2,7 +2,34 @@ import type { Node } from 'cc';
 import { IComponent, IComponentIdentifier } from './component';
 import { IVec3, IQuat } from './value-types';
 import { IServiceEvents } from '../scene-process/service/core';
-import { IPrefabInfo } from './prefab';
+import { IPrefabInfo, IPrefabStateInfo } from './prefab';
+
+// ====== Hierarchy tree types (for queryNodeTree) ======
+
+export interface INodeTreeComponent {
+    isCustom: boolean;
+    type: string;
+    value: string;
+    extends: string[];
+}
+
+export interface INodeTreeItem {
+    name: string;
+    active: boolean;
+    locked: boolean;
+    type: string;
+    children: INodeTreeItem[];
+    prefab: IPrefabStateInfo;
+    parent: string;
+    path: string;
+    isScene: boolean;
+    readonly: boolean;
+    components: INodeTreeComponent[];
+}
+
+export interface IQueryNodeTreeParams {
+    path?: string;
+}
 
 export enum NodeType {
     EMPTY = 'Empty', // 空节点
@@ -219,6 +246,11 @@ export interface INodeService extends IServiceEvents {
     * 查询节点
     */
     queryNode(params: IQueryNodeParams): Promise<INode | null>;
+
+    /**
+     * 查询节点树（层级管理器格式）
+     */
+    queryNodeTree(params: IQueryNodeTreeParams): Promise<INodeTreeItem | null>;
 }
 
 ///
