@@ -288,7 +288,7 @@ class AssetHandlerManager {
             const createMenu = await this.getCreateMenuByName(importer);
             result.push(...createMenu);
         }
-        return result;
+        return result.map((item) => translateCreateMenuInfo(item));
     }
 
     /**
@@ -688,6 +688,12 @@ async function queryUserTemplates(templateDir: string) {
 
 function getUserTemplateDir(importer: string) {
     return join(AssetHandlerManager.createTemplateRoot, importer);
+}
+
+function translateCreateMenuInfo(info: ICreateMenuInfo): ICreateMenuInfo {
+    const translated = { ...info };
+    translated.label = i18n.transI18nName(translated.label);
+    return translated;
 }
 
 async function afterCreateAsset(paths: string | string[], options: CreateAssetOptions) {
