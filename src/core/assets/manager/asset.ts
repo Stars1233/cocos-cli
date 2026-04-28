@@ -3,6 +3,7 @@ import assetDBManager from './asset-db';
 import { url2path, url2uuid } from '../utils';
 import EventEmitter from 'events';
 import { AssetManagerEvents, IAsset, IAssetInfo, IAssetDBInfo } from '../@types/private';
+import type { ThumbnailInfo, ThumbnailSize } from '../@types/protected/asset-handler';
 import assetQuery from './query';
 import assetOperation from './operation';
 import assetHandlerManager from './asset-handler';
@@ -46,11 +47,17 @@ class AssetManager extends EventEmitter {
     updateUserData = assetOperation.updateUserData.bind(assetOperation);
 
     // ----------- assetHandlerManager ------------
-    queryIconConfigMap = assetHandlerManager.queryIconConfigMap.bind(assetHandlerManager);
     queryAssetConfigMap = assetHandlerManager.queryAssetConfigMap.bind(assetHandlerManager);
     updateDefaultUserData = assetHandlerManager.updateDefaultUserData.bind(assetHandlerManager);
     getCreateMap = assetHandlerManager.getCreateMap.bind(assetHandlerManager);
     queryAssetUserDataConfig = assetHandlerManager.queryUserDataConfig.bind(assetHandlerManager);
+    queryThumbnailHandlers = assetHandlerManager.queryThumbnailHandlers.bind(assetHandlerManager);
+
+    async generateThumbnail(urlOrUUIDOrPath: string, size?: ThumbnailSize): Promise<ThumbnailInfo | null> {
+        const asset = this.queryAsset(urlOrUUIDOrPath);
+        if (!asset) { return null; }
+        return assetHandlerManager.generateThumbnail(asset, size);
+    }
     getEffectBinPath() {
         return assetHandlerManager.getEffectBinPath();
     };
@@ -344,12 +351,14 @@ export interface TypedAssetManager extends EventEmitter {
     createAssetByType: typeof assetOperation.createAssetByType;
     updateUserData: typeof assetOperation.updateUserData;
 
-    queryIconConfigMap: typeof assetHandlerManager.queryIconConfigMap;
     queryAssetConfigMap: typeof assetHandlerManager.queryAssetConfigMap;
     updateDefaultUserData: typeof assetHandlerManager.updateDefaultUserData;
     getCreateMap: typeof assetHandlerManager.getCreateMap;
     queryAssetUserDataConfig: typeof assetHandlerManager.queryUserDataConfig;
+    queryThumbnailHandlers: typeof assetHandlerManager.queryThumbnailHandlers;
     getEffectBinPath: typeof assetHandlerManager.getEffectBinPath;
+
+    generateThumbnail(urlOrUUIDOrPath: string, size?: ThumbnailSize): Promise<ThumbnailInfo | null>;
 
     onReady: typeof assetManager.onReady;
     onDBReady: typeof assetManager.onDBReady;
