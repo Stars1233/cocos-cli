@@ -1,6 +1,6 @@
 'use strict';
 
-import { CCObject, geometry, Layers, Node, Vec3, director } from 'cc';
+import { CCObject, geometry, Layers, Mat4, Node, Rect, UITransform, Vec3, director } from 'cc';
 import { ray } from './engine-utils';
 
 /**
@@ -292,4 +292,58 @@ export function getRegionNodes(
     });
 
     return resultNodes;
+}
+
+export function getNodeWorldBounds(node: Node): Rect {
+    let width = 0, height = 0;
+    const rect = new Rect(0, 0, 0, 0);
+
+    const uiComp = node.getComponent(UITransform);
+    if (uiComp) {
+        width = uiComp.contentSize.width;
+        height = uiComp.contentSize.height;
+        const anchor = uiComp.anchorPoint;
+        rect.x = -anchor.x * width;
+        rect.y = -anchor.y * height;
+        rect.width = width;
+        rect.height = height;
+    }
+
+    const mat = new Mat4();
+    node.getWorldMatrix(mat);
+    rect.transformMat4(mat);
+    return rect;
+}
+
+export function getNodeWorldOrientedBounds(node: Node): Vec3[] {
+    const mat = new Mat4();
+    node.getWorldMatrix(mat);
+
+    let width = 0, height = 0;
+    const rect = new Rect(0, 0, 0, 0);
+
+    const uiComp = node.getComponent(UITransform);
+    if (uiComp) {
+        width = uiComp.contentSize.width;
+        height = uiComp.contentSize.height;
+        const anchor = uiComp.anchorPoint;
+        rect.x = -anchor.x * width;
+        rect.y = -anchor.y * height;
+        rect.width = width;
+        rect.height = height;
+    }
+
+    const bl = new Vec3(rect.x, rect.y, 0);
+    const tl = new Vec3(rect.x, rect.y + rect.height, 0);
+    const tr = new Vec3(rect.x + rect.width, rect.y + rect.height, 0);
+    const br = new Vec3(rect.x + rect.width, rect.y, 0);
+    Vec3.transformMat4(bl, bl, mat);
+    Vec3.transformMat4(tl, tl, mat);
+    Vec3.transformMat4(tr, tr, mat);
+    Vec3.transformMat4(br, br, mat);
+
+    const worldPos = node.getWorldPosition();
+    bl.z = tl.z = tr.z = br.z = worldPos.z;
+
+    return [bl, tl, tr, br];
 }

@@ -309,6 +309,30 @@
             </div>
         </div>
 
+        <!-- Rect Test -->
+        <div class="panel-section" id="sec-rect-test">
+            <h3 onclick="toggleSection('sec-rect-test')">Rect Test</h3>
+            <div class="section-body">
+                <div class="row">
+                    <label>Multi-Select</label>
+                    <button class="btn" onclick="doMultiSelect()">Add to Sel</button>
+                    <button class="btn" onclick="doSelectAll2D()">All 2D</button>
+                </div>
+                <div class="row">
+                    <label>Rect Tool</label>
+                    <button class="btn" onclick="setTool('rect')">Switch to Rect</button>
+                </div>
+                <div class="row">
+                    <label>Selected</label>
+                    <span id="rectSelInfo" class="info-text">0 nodes</span>
+                </div>
+                <div class="row">
+                    <label>Bounds</label>
+                    <span id="rectBoundsInfo" class="info-text">-</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Log -->
         <div class="panel-section" id="sec-log">
             <h3 onclick="toggleSection('sec-log')">Log</h3>
@@ -575,12 +599,96 @@
         }
         window.refreshState = refreshState;
 
+        /* ── Rect Test ── */
+        function doMultiSelect() {
+            var sel = document.getElementById('nodeList');
+            var uuid = sel.value;
+            if (!uuid) { log('No node selected in dropdown', 'status-warn'); return; }
+            try {
+                if (window.cli.Scene && window.cli.Scene.Selection) {
+                    window.cli.Scene.Selection.select(uuid);
+                    log('Added to selection: ' + uuid.substring(0, 8), 'status-ok');
+                    setTimeout(function() { refreshState(); refreshRectInfo(); }, 100);
+                }
+            } catch(e) { log('doMultiSelect error: ' + e.message, 'status-err'); }
+        }
+        window.doMultiSelect = doMultiSelect;
+
+        function doSelectAll2D() {
+            try {
+                if (!window.cli.Scene || !window.cli.Scene.Selection) return;
+                window.cli.Scene.Selection.clear();
+                var sel = document.getElementById('nodeList');
+                var uuids = [];
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value) uuids.push(sel.options[i].value);
+                }
+                for (var j = 0; j < uuids.length; j++) {
+                    window.cli.Scene.Selection.select(uuids[j]);
+                }
+                log('Selected all nodes: ' + uuids.length, 'status-ok');
+                setTimeout(function() { refreshState(); refreshRectInfo(); }, 100);
+            } catch(e) { log('doSelectAll2D error: ' + e.message, 'status-err'); }
+        }
+        window.doSelectAll2D = doSelectAll2D;
+
+        function refreshRectInfo() {
+            try {
+                var selInfo = document.getElementById('rectSelInfo');
+                var boundsInfo = document.getElementById('rectBoundsInfo');
+                if (!window.cli.Scene || !window.cli.Scene.Selection) {
+                    selInfo.textContent = '0 nodes';
+                    boundsInfo.textContent = '-';
+                    return;
+                }
+                var uuids = window.cli.Scene.Selection.query() || [];
+                selInfo.textContent = uuids.length + ' node' + (uuids.length !== 1 ? 's' : '');
+                if (uuids.length > 1) {
+                    selInfo.textContent += ' (multi)';
+                }
+
+                var nodes = [];
+                var EditorExtends = (cc && cc.EditorExtends) || window.EditorExtends;
+                if (EditorExtends && EditorExtends.Node) {
+                    for (var k = 0; k < uuids.length; k++) {
+                        var n = EditorExtends.Node.getNode(uuids[k]);
+                        if (n) nodes.push(n);
+                    }
+                }
+                if (nodes.length > 1) {
+                    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    for (var m = 0; m < nodes.length; m++) {
+                        var wp = nodes[m].getWorldPosition();
+                        if (wp.x < minX) minX = wp.x;
+                        if (wp.x > maxX) maxX = wp.x;
+                        if (wp.y < minY) minY = wp.y;
+                        if (wp.y > maxY) maxY = wp.y;
+                    }
+                    boundsInfo.textContent = 'W:' + (maxX - minX).toFixed(0) + ' H:' + (maxY - minY).toFixed(0);
+                } else if (nodes.length === 1) {
+                    var uit = nodes[0].getComponent('cc.UITransform');
+                    if (uit) {
+                        boundsInfo.textContent = 'W:' + uit.contentSize.width.toFixed(0) + ' H:' + uit.contentSize.height.toFixed(0);
+                    } else {
+                        boundsInfo.textContent = 'no UITransform';
+                    }
+                } else {
+                    boundsInfo.textContent = '-';
+                }
+            } catch(e) {
+                document.getElementById('rectBoundsInfo').textContent = 'error';
+            }
+        }
+        window.refreshRectInfo = refreshRectInfo;
+
         /* ── Init Panel ── */
         async function initPanel() {
             refreshState();
+            refreshRectInfo();
             await refreshNodeList();
             // Auto-refresh every 2s
             setInterval(refreshState, 2000);
+            setInterval(refreshRectInfo, 2000);
         }
         window.initPanel = initPanel;
 
