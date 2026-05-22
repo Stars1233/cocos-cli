@@ -109,6 +109,13 @@ export async function queryAssetMeta(urlOrUUIDOrPath: string): Promise<IAssetMet
 }
 
 /**
+ * Save Asset Metadata // 保存资源元数据
+ */
+export async function saveAssetMeta(uuid: string, meta: IAssetMeta): Promise<void> {
+    return await assetManager.saveAssetMeta(uuid, meta);
+}
+
+/**
  * Query Creatable Asset Map // 查询可创建资源映射表
  */
 export async function queryCreateMap(): Promise<ICreateMenuInfo[]> {
