@@ -14,14 +14,17 @@ const tools = {
         {
             url: 'http://download.cocos.com/CocosSDK/tools/PVRTexToolCLI_win32_20251028.zip',
             dist: 'PVRTexTool_win32',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/mali_win32.zip',
             dist: 'mali_win32',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/libwebp_win32.zip',
             dist: 'libwebp_win32',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/openSSLWin64.zip',
@@ -34,6 +37,7 @@ const tools = {
         {
             url: 'http://download.cocos.com/CocosSDK/tools/astcenc/astcenc-win32-5.2.0-250220.zip',
             dist: 'astc-encoder',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/xiaomi-pack-tools-win32-202404.zip',
@@ -42,18 +46,22 @@ const tools = {
         {
             url: 'http://download.cocos.com/CocosSDK/tools/lightmap-tools-win32-230525.zip',
             dist: 'lightmap-tools',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/uvunwrap_win32_221025.zip',
             dist: 'LightFX',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/cmft_win32_x64-20230323.zip',
             dist: 'cmft',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/cmake-3.24.3-windows-x86_64.zip',
             dist: 'cmake',
+            essential: true,
         },
         // 注意：windows-process-tree 的 URL 可能已失效，暂时注释
         // {
@@ -65,18 +73,22 @@ const tools = {
         {
             url: 'http://download.cocos.com/CocosSDK/tools/PVRTexToolCLI_darwin_20251028.zip',
             dist: 'PVRTexTool_darwin',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/mali_darwin.zip',
             dist: 'mali_darwin',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/libwebp-1.4.0-mac-universal.zip',
             dist: 'libwebp_darwin',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/astcenc/astcenc-darwin-5.2.0-250220.zip',
             dist: 'astc-encoder',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/xiaomi-pack-tools-darwin-202404.zip',
@@ -85,18 +97,22 @@ const tools = {
         {
             url: 'http://download.cocos.com/CocosSDK/tools/lightmap-tools-darwin-20241217.zip',
             dist: 'lightmap-tools',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/uvunwrap_darwin_20241217.zip',
             dist: 'LightFX',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/cmft-darwin-20231124.zip',
             dist: 'cmft',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/cmake-3.24.3-macos-universal.zip',
             dist: 'cmake',
+            essential: true,
         },
         {
             url: 'http://download.cocos.com/CocosSDK/tools/process-info-20231116-darwin.zip',
@@ -127,6 +143,11 @@ class ToolDownloader {
         this.toolsDir = path.join(this.projectRoot, 'static', 'tools');
         this.tempDir = path.join(this.projectRoot, '.temp');
         this.platform = process.platform;
+        this.minimal = process.argv.includes('--minimal');
+
+        if (this.minimal) {
+            console.log('🚀 正在以最小依赖模式 (minimal) 运行，仅下载测试必需工具...');
+        }
     }
 
     // 确保目录存在
@@ -338,7 +359,27 @@ class ToolDownloader {
             // 清理临时文件
             fs.unlinkSync(tempFilePath);
 
+            // macOS 下修复权限
+            if (this.platform === 'darwin') {
+                try {
+                    const { execSync } = require('child_process');
+                    execSync(`chmod -R +x "${targetDir}"`, { stdio: 'pipe' });
+                    console.log(`🔑 已修复权限: ${tool.dist}`);
+                } catch (err) {
+                    console.warn(`⚠️ 权限修复失败: ${err.message}`);
+                }
+            }
+
             console.log(`✅ ${tool.dist} 处理完成`);
+
+            // 在 CI 环境下打印目录结构，方便调试
+            if (process.env.GITHUB_ACTIONS) {
+                try {
+                    const files = fs.readdirSync(targetDir);
+                    console.log(`🔎 [${tool.dist}] 目录内容: ${files.join(', ')}`);
+                } catch {}
+            }
+
             return { success: true, skipped: false };
 
         } catch (error) {
@@ -381,7 +422,11 @@ class ToolDownloader {
         // 获取工具列表
         const platformTools = tools[this.platform] || [];
         const commonTools = tools.common || [];
-        const allTools = [...platformTools, ...commonTools];
+        let allTools = [...platformTools, ...commonTools];
+
+        if (this.minimal) {
+            allTools = allTools.filter(tool => tool.essential);
+        }
 
         console.log(`📋 需要下载 ${allTools.length} 个工具文件\n`);
 
