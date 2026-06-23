@@ -161,6 +161,31 @@ export const SchemaSourcePath = z.string().min(1).describe('Source file path, lo
 export const SchemaSaveAssetPath = SchemaUrlOrUUIDOrPath.describe('Required existing asset URL, UUID, or file path to save. This must refer to an asset that already exists in the asset database.'); // 保存已有资源时使用的 URL、UUID 或文件路径
 export const SchemaAssetData = z.string().min(1).describe('Required complete file content to save. Do not omit this field, pass an empty string, or pass partial/truncated script content.'); // 要保存的完整资源数据
 
+// Serialized asset data related // 序列化资源数据相关
+export const SchemaSerializedAssetProperty: z.ZodType<any> = z.lazy(() => z.object({
+    name: z.string().optional().describe('Property name'), // 属性名
+    value: z.any().describe('Property value or nested property map'), // 属性值或嵌套属性映射
+    default: z.any().optional().describe('Default value'), // 默认值
+    type: z.string().optional().describe('Cocos class or value type'), // Cocos 类或值类型
+    path: z.string().optional().describe('Dump property path'), // dump 属性路径
+    readonly: z.boolean().optional().describe('Whether property is read-only'), // 是否只读
+    visible: z.boolean().optional().describe('Whether property is visible'), // 是否可见
+    isArray: z.boolean().optional().describe('Whether property value is an array'), // 是否数组
+    enumList: z.array(z.any()).optional().describe('Enum option list'), // 枚举选项列表
+    optionalTypes: z.array(z.string()).optional().describe('Optional concrete types for variable type properties'), // 可变类型的可选类型列表
+    elementTypeData: z.lazy(() => SchemaSerializedAssetProperty).optional().describe('Default dump data for array elements'), // 数组元素默认 dump
+}).passthrough().describe('Creator-compatible serialized asset IProperty dump'));
+
+export const SchemaSerializedAssetDump = z.union([
+    z.record(z.string(), SchemaSerializedAssetProperty),
+    SchemaSerializedAssetProperty,
+]).describe('Creator-compatible serialized asset dump. PhysicsMaterial returns a property map, RenderPipeline returns a top-level IProperty.');
+
+export const SchemaSerializedAssetPatch = z.union([
+    SchemaSerializedAssetDump,
+    z.record(z.string(), z.any()),
+]).describe('Serialized asset patch. Prefer IProperty or full dump patches; raw value maps are accepted only for convenience.');
+
 // Return value Schema // 返回值 Schema
 export const SchemaAssetInfoResult = SchemaAssetInfo.nullable().describe('Asset detailed information object, including name, type, path, UUID, etc.'); // 资源详细信息对象，包含名称、类型、路径、UUID 等字段
 export const SchemaAssetMetaResult = SchemaAssetMeta.nullable().describe('Asset metadata object, including import configuration, user data, etc.'); // 资源元数据对象，包含导入配置、用户数据等
@@ -171,6 +196,13 @@ export const SchemaCreatedAssetResult = SchemaAssetInfo.nullable().describe('Cre
 export const SchemaImportedAssetResult = z.array(SchemaAssetInfo).describe('Imported asset information array, includes folder and all its sub-assets information when importing folder'); // 导入的资源信息数组，当导入文件夹时会包含文件夹及其所有子资源的信息
 export const SchemaReimportResult = SchemaAssetInfo.nullable().describe('Re-import operation result'); // 重新导入操作结果
 export const SchemaSaveAssetResult = SchemaAssetInfo.nullable().describe('Asset information object after saving asset'); // 保存资源后的资源信息对象
+export const SchemaSerializedAssetResult = z.object({
+    uuid: z.string().describe('Asset UUID'), // 资源 UUID
+    url: z.string().describe('Asset db URL'), // 资源 db URL
+    type: z.string().describe('Cocos asset type'), // Cocos 资源类型
+    importer: z.string().describe('Asset importer name'), // 资源导入器名称
+    dump: SchemaSerializedAssetDump.describe('Creator-compatible raw dump'), // Creator 兼容 raw dump
+}).nullable().describe('Serialized asset query/save result'); // 序列化资源 query/save 结果
 export const SchemaRefreshDirResult = z.null().describe('Refresh asset directory result'); // 刷新资源目录结果
 export const SchemaUUIDResult = z.string().nullable().describe('Unique identifier UUID of the asset'); // 资源的唯一标识符 UUID
 export const SchemaPathResult = z.string().nullable().describe('File system path of the asset'); // 资源的文件系统路径
@@ -226,6 +258,7 @@ export type TAssetNewName = z.infer<typeof SchemaAssetNewName>;
 export type TAssetOperationOption = z.infer<typeof SchemaAssetOperationOption> | undefined;
 export type TSourcePath = z.infer<typeof SchemaSourcePath>;
 export type TAssetData = z.infer<typeof SchemaAssetData>;
+export type TSerializedAssetPatch = z.infer<typeof SchemaSerializedAssetPatch>;
 export type TAssetInfoResult = z.infer<typeof SchemaAssetInfoResult>;
 export type TAssetMetaResult = z.infer<typeof SchemaAssetMetaResult>;
 export type TCreateMapResult = z.infer<typeof SchemaCreateMapResult>;
@@ -237,6 +270,7 @@ export type TCreateAssetOptions = z.infer<typeof SchemaCreateAssetOptions>;
 export type TImportedAssetResult = z.infer<typeof SchemaImportedAssetResult>;
 export type TReimportResult = z.infer<typeof SchemaAssetInfoResult>;
 export type TSaveAssetResult = z.infer<typeof SchemaSaveAssetResult>;
+export type TSerializedAssetResult = z.infer<typeof SchemaSerializedAssetResult>;
 export type TRefreshDirResult = z.infer<typeof SchemaRefreshDirResult>;
 export type TUUIDResult = z.infer<typeof SchemaUUIDResult>;
 export type TPathResult = z.infer<typeof SchemaPathResult>;

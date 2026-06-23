@@ -12,6 +12,8 @@ import {
     SchemaSourcePath,
     SchemaSaveAssetPath,
     SchemaAssetData,
+    SchemaSerializedAssetPatch,
+    SchemaSerializedAssetResult,
     TUrlOrUUIDOrPath,
     TSaveAssetPath,
     TDataKeys,
@@ -19,6 +21,8 @@ import {
     TSupportCreateType,
     TAssetOperationOption,
     TAssetData,
+    TSerializedAssetPatch,
+    TSerializedAssetResult,
     SchemaAssetInfoResult,
     SchemaAssetMetaResult,
     SchemaCreateMapResult,
@@ -402,6 +406,61 @@ export class AssetsApi {
         } catch (e) {
             ret.code = getCommonErrorStatus(e);
             console.error('save asset fail:', e instanceof Error ? e.message : String(e));
+            ret.reason = e instanceof Error ? e.message : String(e);
+        }
+
+        return ret;
+    }
+
+    /**
+     * Query Serialized Asset Data // 查询序列化资源属性数据
+     */
+    @tool('assets-query-serialized-data')
+    @title('Query Serialized Asset Data')
+    @description('Query Creator-compatible serialized asset dump data through assets.serializedData.query. Supports only cc.PhysicsMaterial and cc.RenderPipeline in the first batch. The returned dump is the raw IProperty structure consumed by ui-prop type="dump": PhysicsMaterial returns a property map, while RenderPipeline returns one top-level IProperty.')
+    @result(SchemaSerializedAssetResult)
+    async querySerializedData(
+        @param(SchemaUrlOrUUIDOrPath) uuidOrUrlOrPath: TUrlOrUUIDOrPath
+    ): Promise<CommonResultType<TSerializedAssetResult>> {
+        const code: HttpStatusCode = COMMON_STATUS.SUCCESS;
+        const ret: CommonResultType<TSerializedAssetResult> = {
+            code: code,
+            data: null,
+        };
+
+        try {
+            ret.data = await assetManager.querySerializedData(uuidOrUrlOrPath);
+        } catch (e) {
+            ret.code = getCommonErrorStatus(e);
+            console.error('query serialized asset data fail:', e instanceof Error ? e.message : String(e));
+            ret.reason = e instanceof Error ? e.message : String(e);
+        }
+
+        return ret;
+    }
+
+    /**
+     * Save Serialized Asset Data // 保存序列化资源属性数据
+     */
+    @tool('assets-save-serialized-data')
+    @title('Save Serialized Asset Data')
+    @description('Save Creator-compatible serialized asset dump data through assets.serializedData.save. Supports only cc.PhysicsMaterial and cc.RenderPipeline in the first batch. Prefer passing an IProperty or full dump patch returned by assets-query-serialized-data; unknown fields are rejected, and hidden or readonly fields can only pass through unchanged.')
+    @result(SchemaSerializedAssetResult)
+    async saveSerializedData(
+        @param(SchemaUrlOrUUIDOrPath) uuidOrUrlOrPath: TUrlOrUUIDOrPath,
+        @param(SchemaSerializedAssetPatch) patch: TSerializedAssetPatch
+    ): Promise<CommonResultType<TSerializedAssetResult>> {
+        const code: HttpStatusCode = COMMON_STATUS.SUCCESS;
+        const ret: CommonResultType<TSerializedAssetResult> = {
+            code: code,
+            data: null,
+        };
+
+        try {
+            ret.data = await assetManager.saveSerializedData(uuidOrUrlOrPath, patch);
+        } catch (e) {
+            ret.code = getCommonErrorStatus(e);
+            console.error('save serialized asset data fail:', e instanceof Error ? e.message : String(e));
             ret.reason = e instanceof Error ? e.message : String(e);
         }
 
