@@ -498,9 +498,9 @@ describe('ServiceEvents 事件发射集成测试', () => {
             }
         });
 
-        it('filterChildOfAssetOfPrefabInstance 中 prefab 子节点应 emit scene:change-node', () => {
+        it('filterChildOfAssetOfPrefabInstance 中 prefab 子节点应 emit node:change', () => {
             const listener = jest.fn();
-            globalEventEmitter.on('scene:change-node', listener);
+            globalEventEmitter.on('node:change', listener);
 
             prefabUtilsMock.isOutmostPrefabInstanceMountedChildren.mockReturnValue(false);
             prefabUtilsMock.isPrefabInstanceRoot.mockReturnValue(false);
@@ -511,9 +511,9 @@ describe('ServiceEvents 事件发射集成测试', () => {
             expect(listener).toHaveBeenCalledWith('/Node-child-uuid-1');
         });
 
-        it('filterChildOfAssetOfPrefabInstance 中非 prefab 子节点不应 emit scene:change-node', () => {
+        it('filterChildOfAssetOfPrefabInstance 中非 prefab 子节点不应 emit node:change', () => {
             const listener = jest.fn();
-            globalEventEmitter.on('scene:change-node', listener);
+            globalEventEmitter.on('node:change', listener);
 
             prefabUtilsMock.isOutmostPrefabInstanceMountedChildren.mockReturnValue(false);
             prefabUtilsMock.isPrefabInstanceRoot.mockReturnValue(false);
@@ -525,9 +525,9 @@ describe('ServiceEvents 事件发射集成测试', () => {
             expect(result).toContain('normal-uuid');
         });
 
-        it('filterPartOfPrefabAsset 中 prefab 部件应 emit scene:change-node', () => {
+        it('filterPartOfPrefabAsset 中 prefab 部件应 emit node:change', () => {
             const listener = jest.fn();
-            globalEventEmitter.on('scene:change-node', listener);
+            globalEventEmitter.on('node:change', listener);
 
             prefabUtilsMock.isPartOfAssetInPrefabInstance.mockReturnValue(true);
 
@@ -536,9 +536,9 @@ describe('ServiceEvents 事件发射集成测试', () => {
             expect(listener).toHaveBeenCalledWith('/Node-part-uuid');
         });
 
-        it('filterPartOfPrefabAsset 中非 prefab 部件不应 emit scene:change-node', () => {
+        it('filterPartOfPrefabAsset 中非 prefab 部件不应 emit node:change', () => {
             const listener = jest.fn();
-            globalEventEmitter.on('scene:change-node', listener);
+            globalEventEmitter.on('node:change', listener);
 
             prefabUtilsMock.isPartOfAssetInPrefabInstance.mockReturnValue(false);
 
@@ -548,9 +548,9 @@ describe('ServiceEvents 事件发射集成测试', () => {
             expect(result).toContain('normal-uuid');
         });
 
-        it('canModifySibling 中不可移动的 prefab 子节点应 emit scene:change-node', () => {
+        it('canModifySibling 中不可移动的 prefab 子节点应 emit node:change', () => {
             const listener = jest.fn();
-            globalEventEmitter.on('scene:change-node', listener);
+            globalEventEmitter.on('node:change', listener);
 
             const child = {
                 uuid: 'prefab-child',
