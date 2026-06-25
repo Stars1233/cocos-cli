@@ -16,6 +16,7 @@ import {
     ImageMeta,
     LODsOption,
 } from '../../@types/userDatas';
+import { NormalImportSetting, TangentImportSetting } from '../../@types/interface';
 import { convertsEncodedSeparatorsInURI } from './utils/uri-utils';
 import { AnimationClip, MeshRenderer, Node } from 'cc';
 
@@ -46,6 +47,130 @@ const lodash = require('lodash');
 export const GltfHandler: AssetHandlerBase = {
     // Handler 的名字，用于指定 Handler as 等
     name: 'gltf',
+
+    propertySchemaConfig: {
+            dumpMaterials: {
+                label: 'Dump Materials',
+                default: false,
+                render: { ui: 'ui-checkbox' },
+            },
+            mountAllAnimationsOnPrefab: {
+                label: 'Mount All Animations On Prefab',
+                default: false,
+                render: { ui: 'ui-checkbox' },
+            },
+            allowMeshDataAccess: {
+                label: 'Allow Mesh Data Access',
+                default: true,
+                render: { ui: 'ui-checkbox' },
+            },
+            addVertexColor: {
+                label: 'Add Vertex Color',
+                default: false,
+                render: { ui: 'ui-checkbox' },
+            },
+            promoteSingleRootNode: {
+                label: 'Promote Single Root Node',
+                default: false,
+                render: { ui: 'ui-checkbox' },
+            },
+            generateLightmapUVNode: {
+                label: 'Generate Lightmap UV',
+                default: false,
+                render: { ui: 'ui-checkbox' },
+            },
+            normals: {
+                label: 'Normals',
+                default: NormalImportSetting.require,
+                render: {
+                    ui: 'ui-select',
+                    items: [
+                        { label: 'Optional', value: String(NormalImportSetting.optional) },
+                        { label: 'Exclude', value: String(NormalImportSetting.exclude) },
+                        { label: 'Require', value: String(NormalImportSetting.require) },
+                        { label: 'Recalculate', value: String(NormalImportSetting.recalculate) },
+                    ],
+                },
+            },
+            tangents: {
+                label: 'Tangents',
+                default: TangentImportSetting.require,
+                render: {
+                    ui: 'ui-select',
+                    items: [
+                        { label: 'Exclude', value: String(TangentImportSetting.exclude) },
+                        { label: 'Optional', value: String(TangentImportSetting.optional) },
+                        { label: 'Require', value: String(TangentImportSetting.require) },
+                        { label: 'Recalculate', value: String(TangentImportSetting.recalculate) },
+                    ],
+                },
+            },
+            morphNormals: {
+                label: 'Morph Normals',
+                default: NormalImportSetting.exclude,
+                render: {
+                    ui: 'ui-select',
+                    items: [
+                        { label: 'Exclude', value: String(NormalImportSetting.exclude) },
+                        { label: 'Optional', value: String(NormalImportSetting.optional) },
+                    ],
+                },
+            },
+            meshOptimizer: {
+                label: 'Mesh Optimizer',
+                type: 'object',
+                default: {
+                    enable: false,
+                    algorithm: 'simplify',
+                    simplifyOptions: getDefaultSimplifyOptions(),
+                },
+                itemConfigs: {
+                    enable: {
+                        label: 'Enable',
+                        default: false,
+                        render: { ui: 'ui-checkbox' },
+                    },
+                    algorithm: {
+                        label: 'Algorithm',
+                        default: 'simplify',
+                        render: {
+                            ui: 'ui-select',
+                            items: [
+                                { label: 'Simplify', value: 'simplify' },
+                                { label: 'gltfpack', value: 'gltfpack' },
+                            ],
+                        },
+                    },
+                    simplifyOptions: {
+                        label: 'Simplify Options',
+                        type: 'object',
+                        default: getDefaultSimplifyOptions(),
+                        itemConfigs: {
+                            targetRatio: {
+                                label: 'Target Ratio',
+                                default: 1,
+                                render: { ui: 'ui-number-input', attributes: { min: 0, max: 1, step: 0.01 } },
+                            },
+                            enableSmartLink: {
+                                label: 'Enable Smart Link',
+                                default: true,
+                                render: { ui: 'ui-checkbox' },
+                            },
+                            agressiveness: {
+                                label: 'Agressiveness',
+                                default: 7,
+                                render: { ui: 'ui-number-input', attributes: { min: 0, step: 1 } },
+                            },
+                            maxIterationCount: {
+                                label: 'Max Iteration Count',
+                                default: 100,
+                                render: { ui: 'ui-number-input', attributes: { min: 1, step: 1 } },
+                            },
+                        },
+                    },
+                },
+            },
+    },
 
     importer: {
         // 版本号如果变更，则会强制重新导入

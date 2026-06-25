@@ -77,6 +77,8 @@ import {
     TUpdateAssetUserDataResult,
     SchemaAssetConfigMapResult,
     TAssetConfigMapResult,
+    SchemaAssetPropertySchemaResult,
+    TAssetPropertySchemaResult,
     TUUIDOrPath,
     TUrlOrUUID,
     TUrlOrPath,
@@ -1005,6 +1007,33 @@ export class AssetsApi {
         } catch (e) {
             ret.code = COMMON_STATUS.FAIL;
             console.error('query asset config map fail:', e instanceof Error ? e.message : String(e));
+            ret.reason = e instanceof Error ? e.message : String(e);
+        }
+
+        return ret;
+    }
+
+    /**
+     * Query Asset Property Schema // 查询资源导入属性 schema
+     */
+    @tool('assets-query-property-schema')
+    @title('Query Asset Import Property Schema') // 查询资源导入属性 schema
+    @description('Query the standardized import property schema for a specific asset importer. The result is designed for panels to render import settings automatically and includes stable fields such as label, type, default, options, assetType, min, max, step, readOnly, and order. The raw field is only for debugging and should not be used as a UI contract.') // 查询指定资源导入器的标准化导入属性 schema，用于面板自动渲染导入设置。
+    @result(SchemaAssetPropertySchemaResult)
+    async queryPropertySchema(
+        @param(SchemaUserDataHandler) importer: TUserDataHandler
+    ): Promise<CommonResultType<TAssetPropertySchemaResult>> {
+        const code: HttpStatusCode = COMMON_STATUS.SUCCESS;
+        const ret: CommonResultType<TAssetPropertySchemaResult> = {
+            code: code,
+            data: {},
+        };
+
+        try {
+            ret.data = await assetManager.queryPropertySchema(importer);
+        } catch (e) {
+            ret.code = getCommonErrorStatus(e);
+            console.error('query asset property schema fail:', e instanceof Error ? e.message : String(e));
             ret.reason = e instanceof Error ? e.message : String(e);
         }
 

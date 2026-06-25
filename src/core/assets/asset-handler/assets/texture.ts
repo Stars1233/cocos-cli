@@ -6,7 +6,7 @@ import { AssetHandler } from '../../@types/protected';
 import { Texture2DAssetUserData } from '../../@types/userDatas';
 import { getDependUUIDList } from '../utils';
 import { makeDefaultTexture2DAssetUserData } from './image/utils';
-import { applyTextureBaseAssetUserData } from './texture-base';
+import { applyTextureBaseAssetUserData, createTextureBaseUserDataConfig } from './texture-base';
 import { url2uuid } from '../../utils';
 
 export const TextureHandler: AssetHandler = {
@@ -15,6 +15,27 @@ export const TextureHandler: AssetHandler = {
 
     // 引擎内对应的类型
     assetType: 'cc.Texture2D',
+
+    propertySchemaConfig: {
+        ...createTextureBaseUserDataConfig(),
+        imageUuidOrDatabaseUri: {
+            label: 'Image',
+            default: '',
+            render: {
+                ui: 'ui-asset',
+                attributes: {
+                    assetType: 'cc.ImageAsset',
+                },
+            },
+        },
+        isUuid: {
+            label: 'Use UUID',
+            default: true,
+            render: {
+                ui: 'ui-checkbox',
+            },
+        },
+    },
 
     importer: {
         // 版本号如果变更，则会强制重新导入

@@ -93,6 +93,9 @@ export interface AssetHandlerBase extends CustomHandlerBase {
     // 对应导入资源在导入后的资源类型信息，未传递默认为 cc.Asset
     assetType?: IAssetType;
 
+    // Schema-only userData config. It is not registered as runtime default userData.
+    propertySchemaConfig?: Record<string, IUerDataConfigItem>;
+
     // 指定资源的 userData 配置
     userDataConfig?: {
         // 用于 userData 默认值的渲染界面

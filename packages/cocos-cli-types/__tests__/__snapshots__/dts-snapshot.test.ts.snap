@@ -118,6 +118,28 @@ export declare interface AssetOperationOption {
     overwrite?: boolean;
     rename?: boolean;
 }
+export declare interface AssetPropertySchema {
+    label: string;
+    description?: string;
+    type: AssetPropertySchemaType;
+    default?: unknown;
+    options?: AssetPropertySchemaOption[];
+    assetType?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    readOnly?: boolean;
+    order?: number;
+    properties?: Record<string, AssetPropertySchema>;
+    items?: AssetPropertySchema | AssetPropertySchema[];
+    raw?: unknown;
+}
+export declare type AssetPropertySchemaMap = Record<string, AssetPropertySchema>;
+export declare interface AssetPropertySchemaOption {
+    label: string;
+    value: string | number | boolean;
+}
+export declare type AssetPropertySchemaType = 'string' | 'number' | 'boolean' | 'enum' | 'asset' | 'array' | 'object';
 export declare interface AssetUserDataMap {
     'animation-clip': AnimationClipAssetUserData;
     'auto-atlas': AutoAtlasAssetUserData;
@@ -738,6 +760,7 @@ export declare function queryAssetUserDataConfig(urlOrUuidOrPath: string): Promi
 export declare function queryAssetUsers(uuidOrUrl: string, type?: QueryAssetType): Promise<string[]>;
 export declare function queryCreateMap(): Promise<ICreateMenuInfo[]>;
 export declare function queryPath(urlOrUuid: string): Promise<string>;
+export declare function queryPropertySchema(importer: string): Promise<AssetPropertySchemaMap>;
 export declare function querySerializedData(uuidOrUrlOrPath: string): Promise<SerializedAssetQueryResult>;
 export declare function querySortedPlugins(filterOptions?: FilterPluginOptions): Promise<IPluginScriptInfo[]>;
 export declare function queryThumbnailHandlers(): string[];
@@ -6988,6 +7011,28 @@ export declare interface AssetOperationOption {
     overwrite?: boolean;
     rename?: boolean;
 }
+export declare interface AssetPropertySchema {
+    label: string;
+    description?: string;
+    type: AssetPropertySchemaType;
+    default?: unknown;
+    options?: AssetPropertySchemaOption[];
+    assetType?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    readOnly?: boolean;
+    order?: number;
+    properties?: Record<string, AssetPropertySchema>;
+    items?: AssetPropertySchema | AssetPropertySchema[];
+    raw?: unknown;
+}
+export declare type AssetPropertySchemaMap = Record<string, AssetPropertySchema>;
+export declare interface AssetPropertySchemaOption {
+    label: string;
+    value: string | number | boolean;
+}
+export declare type AssetPropertySchemaType = 'string' | 'number' | 'boolean' | 'enum' | 'asset' | 'array' | 'object';
 export declare namespace Assets {
     export {
         init,
@@ -7022,6 +7067,7 @@ export declare namespace Assets {
         queryAssetUserDataConfig,
         updateAssetUserData,
         queryAssetConfigMap,
+        queryPropertySchema,
         queryThumbnailHandlers,
         generateThumbnail,
         onAssetAdded,
@@ -7051,6 +7097,10 @@ export declare namespace Assets {
         SerializedAssetDump,
         SerializedAssetPatch,
         SerializedAssetQueryResult,
+        AssetPropertySchemaType,
+        AssetPropertySchemaOption,
+        AssetPropertySchema,
+        AssetPropertySchemaMap,
         IAssetInfo,
         AssetOperationOption,
         DeleteAssetOptions,
@@ -8211,6 +8261,7 @@ export declare function queryLayerBuiltin(): Promise<{
     value: number;
 }[]>;
 export declare function queryPath(urlOrUuid: string): Promise<string>;
+export declare function queryPropertySchema(importer: string): Promise<AssetPropertySchemaMap>;
 export declare function querySerializedData(uuidOrUrlOrPath: string): Promise<SerializedAssetQueryResult>;
 export declare function querySortedPlugins(filterOptions?: FilterPluginOptions): Promise<IPluginScriptInfo[]>;
 export declare function querySortingLayerBuiltin(): Promise<readonly __private._cocos_sorting_sorting_layers__SortingItem[]>;

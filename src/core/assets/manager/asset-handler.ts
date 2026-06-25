@@ -12,6 +12,8 @@ import type { AssetHandlerInfo } from '../asset-handler/config';
 import assetConfig from '../asset-config';
 import { copyPath, createDirectoryPath, writePath } from './filesystem';
 import eol from 'eol';
+import { convertUserDataConfigToPropertySchema, mergeUserDataConfigForPropertySchema } from '../property-schema';
+import type { AssetPropertySchemaMap } from '../@types/public';
 
 interface HandlerInfo extends AssetHandlerInfo {
     pkgName: string;
@@ -545,6 +547,20 @@ class AssetHandlerManager {
         }
         return assetHandler.userDataConfig.default;
     }
+
+    async queryPropertySchema(importer: string): Promise<AssetPropertySchemaMap> {
+        const assetHandler = await this.ensureHandler(importer);
+        if (!assetHandler) {
+            throw new Error(`Asset handler not found: ${importer}`);
+        }
+
+        const propertyConfig = mergeUserDataConfigForPropertySchema(
+            assetHandler.userDataConfig?.default,
+            assetHandler.propertySchemaConfig,
+        );
+        return convertUserDataConfigToPropertySchema(propertyConfig);
+    }
+
     async runImporterHook(asset: IAsset, hookName: 'before' | 'after') {
         const assetHandler = this.name2handler[asset.meta.importer];
         // 1. 先执行资源处理器内的钩子

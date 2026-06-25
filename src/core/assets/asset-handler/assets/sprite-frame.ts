@@ -7,6 +7,7 @@ import { AssetHandler } from '../../@types/protected';
 import { SpriteFrameBaseAssetUserData, SpriteFrameAssetUserData } from '../../@types/userDatas';
 import { getTrimRect, getDependUUIDList } from '../utils';
 import i18n from '../../../base/i18n';
+import { makeDefaultSpriteFrameBaseAssetUserData } from './texture-base';
 
 try {
     require('sharp');
@@ -18,6 +19,8 @@ try {
 const Sharp = require('sharp');
 
 Sharp.cache(false);
+
+const defaultSpriteFrameUserData = makeDefaultSpriteFrameBaseAssetUserData();
 
 export const SpriteFrameHandler: AssetHandler = {
     // Handler 的名字，用于指定 Handler as 等
@@ -48,6 +51,76 @@ export const SpriteFrameHandler: AssetHandler = {
                     ],
                 },
             },
+        },
+    },
+    propertySchemaConfig: {
+        trimThreshold: {
+            default: defaultSpriteFrameUserData.trimThreshold,
+            label: 'Trim Threshold',
+            render: {
+                ui: 'ui-number-input',
+                attributes: { min: 0, step: 1 },
+            },
+        },
+        packable: {
+            default: defaultSpriteFrameUserData.packable,
+            label: 'Packable',
+            render: { ui: 'ui-checkbox' },
+        },
+        pixelsToUnit: {
+            default: defaultSpriteFrameUserData.pixelsToUnit,
+            label: 'Pixels To Unit',
+            render: {
+                ui: 'ui-number-input',
+                attributes: { min: 1, step: 1 },
+            },
+        },
+        pivotX: {
+            default: defaultSpriteFrameUserData.pivotX,
+            label: 'Pivot X',
+            render: {
+                ui: 'ui-number-input',
+                attributes: { min: 0, max: 1, step: 0.01 },
+            },
+        },
+        pivotY: {
+            default: defaultSpriteFrameUserData.pivotY,
+            label: 'Pivot Y',
+            render: {
+                ui: 'ui-number-input',
+                attributes: { min: 0, max: 1, step: 0.01 },
+            },
+        },
+        meshType: {
+            default: defaultSpriteFrameUserData.meshType,
+            label: 'Mesh Type',
+            render: {
+                ui: 'ui-select',
+                items: [
+                    { label: 'Rect', value: '0' },
+                    { label: 'Polygon', value: '1' },
+                ],
+            },
+        },
+        borderTop: {
+            default: defaultSpriteFrameUserData.borderTop,
+            label: 'Border Top',
+            render: { ui: 'ui-number-input', attributes: { min: 0, step: 1 } },
+        },
+        borderBottom: {
+            default: defaultSpriteFrameUserData.borderBottom,
+            label: 'Border Bottom',
+            render: { ui: 'ui-number-input', attributes: { min: 0, step: 1 } },
+        },
+        borderLeft: {
+            default: defaultSpriteFrameUserData.borderLeft,
+            label: 'Border Left',
+            render: { ui: 'ui-number-input', attributes: { min: 0, step: 1 } },
+        },
+        borderRight: {
+            default: defaultSpriteFrameUserData.borderRight,
+            label: 'Border Right',
+            render: { ui: 'ui-number-input', attributes: { min: 0, step: 1 } },
         },
     },
     importer: {

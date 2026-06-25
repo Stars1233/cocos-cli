@@ -37,6 +37,32 @@ export interface SerializedAssetQueryResult {
     dump: SerializedAssetDump;
 }
 
+export type AssetPropertySchemaType = 'string' | 'number' | 'boolean' | 'enum' | 'asset' | 'array' | 'object';
+
+export interface AssetPropertySchemaOption {
+    label: string;
+    value: string | number | boolean;
+}
+
+export interface AssetPropertySchema {
+    label: string;
+    description?: string;
+    type: AssetPropertySchemaType;
+    default?: unknown;
+    options?: AssetPropertySchemaOption[];
+    assetType?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    readOnly?: boolean;
+    order?: number;
+    properties?: Record<string, AssetPropertySchema>;
+    items?: AssetPropertySchema | AssetPropertySchema[];
+    raw?: unknown;
+}
+
+export type AssetPropertySchemaMap = Record<string, AssetPropertySchema>;
+
 // 如果使用了 datakeys 过滤，请使用此接口定义
 export interface IAssetInfo {
     name: string; // 资源名字

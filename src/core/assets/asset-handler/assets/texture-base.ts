@@ -2,6 +2,7 @@
 
 import { Asset } from '@cocos/asset-db';
 import { Filter, SpriteFrameBaseAssetUserData, TextureBaseAssetUserData, WrapMode } from '../../@types/userDatas';
+import type { IUerDataConfigItem } from '../../@types/protected';
 
 export const defaultMinFilter: Filter = 'linear';
 export const defaultMagFilter: Filter = 'linear';
@@ -17,6 +18,62 @@ export function makeDefaultTextureBaseAssetUserData(): TextureBaseAssetUserData 
         magfilter: defaultMagFilter,
         mipfilter: defaultMipFilter,
         anisotropy: 0,
+    };
+}
+
+export function createTextureBaseUserDataConfig(): Record<string, IUerDataConfigItem> {
+    return {
+        wrapModeS: {
+            label: 'Wrap Mode S',
+            default: defaultWrapModeS,
+            render: {
+                ui: 'ui-select',
+                items: createWrapModeOptions(),
+            },
+        },
+        wrapModeT: {
+            label: 'Wrap Mode T',
+            default: defaultWrapModeT,
+            render: {
+                ui: 'ui-select',
+                items: createWrapModeOptions(),
+            },
+        },
+        minfilter: {
+            label: 'Min Filter',
+            default: defaultMinFilter,
+            render: {
+                ui: 'ui-select',
+                items: createFilterOptions(),
+            },
+        },
+        magfilter: {
+            label: 'Mag Filter',
+            default: defaultMagFilter,
+            render: {
+                ui: 'ui-select',
+                items: createFilterOptions().filter((item) => item.value !== 'none'),
+            },
+        },
+        mipfilter: {
+            label: 'Mip Filter',
+            default: defaultMipFilter,
+            render: {
+                ui: 'ui-select',
+                items: createFilterOptions(),
+            },
+        },
+        anisotropy: {
+            label: 'Anisotropy',
+            default: 0,
+            render: {
+                ui: 'ui-number-input',
+                attributes: {
+                    min: 0,
+                    step: 1,
+                },
+            },
+        },
     };
 }
 
@@ -59,6 +116,22 @@ export function makeDefaultSpriteFrameBaseAssetUserData(): SpriteFrameBaseAssetU
             maxPos: [],
         },
     };
+}
+
+function createWrapModeOptions() {
+    return [
+        { label: 'Repeat', value: 'repeat' },
+        { label: 'Clamp To Edge', value: 'clamp-to-edge' },
+        { label: 'Mirrored Repeat', value: 'mirrored-repeat' },
+    ];
+}
+
+function createFilterOptions() {
+    return [
+        { label: 'None', value: 'none' },
+        { label: 'Nearest', value: 'nearest' },
+        { label: 'Linear', value: 'linear' },
+    ];
 }
 
 export function getWrapMode(wrapMode: WrapMode) {

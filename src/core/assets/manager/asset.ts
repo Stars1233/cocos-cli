@@ -58,6 +58,7 @@ class AssetManager extends EventEmitter {
 
     // ----------- assetHandlerManager ------------
     queryAssetConfigMap = assetHandlerManager.queryAssetConfigMap.bind(assetHandlerManager);
+    queryPropertySchema = assetHandlerManager.queryPropertySchema.bind(assetHandlerManager);
     updateDefaultUserData = assetHandlerManager.updateDefaultUserData.bind(assetHandlerManager);
     getCreateMap = assetHandlerManager.getCreateMap.bind(assetHandlerManager);
     queryAssetUserDataConfig = assetHandlerManager.queryUserDataConfig.bind(assetHandlerManager);
@@ -369,6 +370,7 @@ export interface TypedAssetManager extends EventEmitter {
     saveAnimationGraphVariant: typeof animationGraphVariant.save;
 
     queryAssetConfigMap: typeof assetHandlerManager.queryAssetConfigMap;
+    queryPropertySchema: typeof assetHandlerManager.queryPropertySchema;
     updateDefaultUserData: typeof assetHandlerManager.updateDefaultUserData;
     getCreateMap: typeof assetHandlerManager.getCreateMap;
     queryAssetUserDataConfig: typeof assetHandlerManager.queryUserDataConfig;

@@ -1,4 +1,4 @@
-import type { AnimationMaskChange, AnimationMaskDump, AssetOperationOption, CreateAssetByTypeOptions, DeleteAssetOptions, IAssetFileSystemProvider, IAssetInfo, IAssetMeta, ISupportCreateType, QueryAssetsOption, SerializedAssetPatch, SerializedAssetQueryResult } from '../../core/assets/@types/public';
+import type { AnimationMaskChange, AnimationMaskDump, AssetOperationOption, AssetPropertySchemaMap, CreateAssetByTypeOptions, DeleteAssetOptions, IAssetFileSystemProvider, IAssetInfo, IAssetMeta, ISupportCreateType, QueryAssetsOption, SerializedAssetPatch, SerializedAssetQueryResult } from '../../core/assets/@types/public';
 import type { CreateAssetOptions, IAssetConfig, IAssetDBInfo, ICreateMenuInfo, IUerDataConfigItem, QueryAssetType, ThumbnailInfo, ThumbnailSize } from '../../core/assets/@types/protected';
 import type { FilterPluginOptions, IPluginScriptInfo } from '../../core/scripting/interface';
 import { assetDBManager, assetManager } from '../../core/assets';
@@ -356,6 +356,13 @@ export async function updateAssetUserData(
  */
 export async function queryAssetConfigMap(): Promise<Record<string, IAssetConfig>> {
     return await assetManager.queryAssetConfigMap();
+}
+
+/**
+ * Query Asset Property Schema // 查询资源导入属性 schema
+ */
+export async function queryPropertySchema(importer: string): Promise<AssetPropertySchemaMap> {
+    return await assetManager.queryPropertySchema(importer);
 }
 
 /**

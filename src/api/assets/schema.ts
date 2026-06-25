@@ -343,6 +343,31 @@ export const SchemaAssetConfig = z.object({
 export const SchemaAssetConfigMapResult = z.record(z.string(), SchemaAssetConfig).describe('Asset configuration map, key is asset handler name, value is corresponding configuration information'); // 资源配置映射表，键为资源处理器名称，值为对应的配置信息
 export type TAssetConfigMapResult = z.infer<typeof SchemaAssetConfigMapResult>;
 
+export const SchemaAssetPropertySchemaOption = z.object({
+    label: z.string().describe('Option display label'), // 选项显示名称
+    value: z.union([z.string(), z.number(), z.boolean()]).describe('Option value'), // 选项值
+}).describe('Asset property schema option'); // 资源属性 schema 选项
+
+export const SchemaAssetPropertySchema: z.ZodType<any> = z.lazy(() => z.object({
+    label: z.string().describe('Property display label'), // 属性显示名称
+    description: z.string().optional().describe('Property description'), // 属性描述
+    type: z.enum(['string', 'number', 'boolean', 'enum', 'asset', 'array', 'object']).describe('Property value/control type'), // 属性值或控件类型
+    default: z.any().optional().describe('Static default value'), // 静态默认值
+    options: z.array(SchemaAssetPropertySchemaOption).optional().describe('Enum/select options'), // 枚举/下拉选项
+    assetType: z.string().optional().describe('Allowed Cocos asset type for asset picker'), // Asset Picker 允许的 Cocos 资源类型
+    min: z.number().optional().describe('Minimum number value'), // 数值最小值
+    max: z.number().optional().describe('Maximum number value'), // 数值最大值
+    step: z.number().optional().describe('Number input step'), // 数值步进
+    readOnly: z.boolean().optional().describe('Whether the property is read-only'), // 是否只读
+    order: z.number().optional().describe('Display order'), // 展示顺序
+    properties: z.record(z.string(), SchemaAssetPropertySchema).optional().describe('Nested object properties'), // 嵌套对象属性
+    items: z.union([SchemaAssetPropertySchema, z.array(SchemaAssetPropertySchema)]).optional().describe('Array item schema'), // 数组元素 schema
+    raw: z.any().optional().describe('Original legacy userDataConfig item for debugging only'), // 原始旧配置，仅用于调试
+}).describe('Standardized asset import property schema')); // 标准化资源导入属性 schema
+
+export const SchemaAssetPropertySchemaResult = z.record(z.string(), SchemaAssetPropertySchema).describe('Asset import property schema map, key is property name'); // 资源导入属性 schema 映射
+export type TAssetPropertySchemaResult = z.infer<typeof SchemaAssetPropertySchemaResult>;
+
 export const SchemaAnimationGraphVariantDump = z.object({
     graphUuid: z.string().min(1).nullable().describe('UUID of the referenced AnimationGraph asset. Null clears the graph reference.'),
     clips: z.record(z.string().min(1), z.string()).describe('Animation clip override map: original clip UUID to substitute clip UUID. Empty substitute means no override.'),
