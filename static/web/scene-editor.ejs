@@ -2,6 +2,9 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <!-- 页面挂在 /scene-editor/ 子路径下，但引擎/脚本资源都在根路径。
+         用 base 把相对解析（含 SystemJS import-map 的相对目标）锚定到根，避免被解析成 /scene-editor/... 而 404。 -->
+    <base href="/">
     <title><%= title %></title>
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover"/>
     <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -175,6 +178,10 @@
                 <div class="row">
                     <button class="btn btn-primary" id="btnLoad" onclick="doLoadScene()">Load Scene</button>
                     <span id="sceneStatus" class="info-text">Not loaded</span>
+                </div>
+                <div class="row">
+                    <button class="btn btn-primary" id="btnPreview" onclick="openBrowserPreview()">▶ Preview (Browser)</button>
+                    <span class="info-text">opens /</span>
                 </div>
                 <div class="row">
                     <label>Script</label>
@@ -394,7 +401,7 @@
         };
     </script>
     <script type="module">
-        const { default: boot } = await import("/static/web/boot.js");
+        const { default: boot } = await import("/static/web/scene-editor-boot.js");
         await boot();
     </script>
     <script>
@@ -428,6 +435,23 @@
 
         function toggleSection(id) {
             document.getElementById(id).classList.toggle('folded');
+        }
+
+        // 打开浏览器预览（根路径 /，CC_PREVIEW 跑游戏）。默认预览“当前打开的场景”，
+        // 取不到时退回场景输入框里的 UUID/URL，再退回项目默认启动场景。
+        function openBrowserPreview() {
+            let scene = '';
+            try {
+                const ed = window.cli && window.cli.Scene && window.cli.Scene.Editor;
+                const uuid = ed && ed.getCurrentEditorUuid && ed.getCurrentEditorUuid();
+                if (uuid) scene = uuid;
+            } catch (e) { /* ignore */ }
+            if (!scene) {
+                const input = document.getElementById('sceneInput');
+                if (input && input.value.trim()) scene = input.value.trim();
+            }
+            const url = scene ? '/?scene=' + encodeURIComponent(scene) : '/';
+            window.open(url, '_blank');
         }
 
         /* ── Scene ── */
@@ -949,6 +973,7 @@
         window.safeCall = safeCall;
         window.togglePanel = togglePanel;
         window.toggleSection = toggleSection;
+        window.openBrowserPreview = openBrowserPreview;
     </script>
 </body>
 </html>

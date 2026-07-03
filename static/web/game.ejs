@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title><%= title %></title>
+    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="renderer" content="webkit"/>
+    <meta name="force-rendering" content="webkit"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="full-screen" content="yes"/>
+    <meta name="x5-fullscreen" content="true"/>
+    <meta name="360-fullscreen" content="true"/>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        #GameCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        #error {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            max-height: 50%;
+            overflow: auto;
+            color: #f66;
+            background: rgba(20, 20, 20, 0.95);
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div id="GameDiv" class="wrapper">
+        <div id="Cocos3dGameContainer">
+            <canvas id="GameCanvas" tabindex="-1"></canvas>
+        </div>
+    </div>
+    <div id="error"></div>
+
+    <script>
+        window.WebEnv = { serverURL: '<%= serverURL %>' };
+        window.__launchSceneQuery = '<%= sceneQuery %>';
+    </script>
+    <!-- 运行时 settings：定义 window._CCSettings -->
+    <script src="<%= settingsJs %>"></script>
+    <!-- socket.io 客户端由 socket.io 服务端自动托管，用于热重载 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module">
+        const { default: gameBoot } = await import('/static/web/game-boot.js');
+        await gameBoot();
+    </script>
+</body>
+</html>

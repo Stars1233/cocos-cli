@@ -29,6 +29,14 @@ export async function loadSceneI18n() {
 // 场景配置初始化
 export async function init() {
     await loadSceneI18n();
+
+    // 统一注册浏览器游戏预览路由（扩展预览后端 + GamePreview + 热重载），必须在 SceneScripting /
+    // Scene 之前，使 / 及资源路由优先于场景中间件的宽泛路由。放在 scene init 里，保证所有走
+    // startup / startupScene 的调用方（含其它 IDE 集成）都得到一致的“场景编辑器 + 浏览器预览”行为。
+    const { default: scripting } = await import('../scripting');
+    const { registerBrowserPreview } = await import('../preview/register');
+    await registerBrowserPreview(scripting.projectPath);
+
     middlewareService.register('SceneScripting', SceneScriptingMiddleware);
     middlewareService.register('Scene', SceneMiddleware);
     await sceneConfigInstance.init();

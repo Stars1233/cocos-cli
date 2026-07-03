@@ -65,6 +65,12 @@ jobs:
 
     runs-on: ${{matrix.os}}
 
+    # 抬高 Node 堆上限：E2E 会 spawn dist/cli.js 在 fixture 上编译整个引擎，默认 ~2GB 堆偏紧，
+    # macOS runner 上易 OOM（Ineffective mark-compacts near heap limit）。NODE_OPTIONS 会被
+    # 所有子进程（jest / 被 spawn 的 CLI）继承。
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
