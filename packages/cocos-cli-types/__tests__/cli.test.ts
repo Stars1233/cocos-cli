@@ -6,19 +6,20 @@ describe('cocos-cli-types: cli', () => {
         expect(cli).toBeDefined();
     });
 
-    it('ICLI.Scene should have all 13 service modules', () => {
+    it('IServiceManager should have all 15 service modules', () => {
         const scene: Partial<IServiceManager> = {};
 
         const serviceKeys: (keyof IServiceManager)[] = [
             'Editor', 'Node', 'Component', 'Script',
             'Asset', 'Engine', 'Prefab', 'Selection',
-            'Operation', 'Undo', 'Camera', 'Gizmo', 'SceneView',
+            'Operation', 'Undo', 'Camera', 'Gizmo',
+            'SceneView', 'Preview', 'UI',
         ];
 
         for (const key of serviceKeys) {
             expect(key).toBeDefined();
         }
-        expect(serviceKeys).toHaveLength(13);
+        expect(serviceKeys).toHaveLength(15);
         expect(scene).toBeDefined();
     });
 
@@ -30,14 +31,56 @@ describe('cocos-cli-types: cli', () => {
 
     it('IServiceManager.Node should have CRUD methods', () => {
         type NodeKeys = keyof IServiceManager['Node'];
-        const nodeMethods: NodeKeys[] = ['createByType', 'createByAsset', 'delete', 'query', 'queryNodeTree'];
+        const nodeMethods: NodeKeys[] = [
+            'createByType', 'createByAsset', 'delete', 'query', 'queryNodeTree',
+            'setProperty', 'previewSetProperty', 'cancelPreviewSetProperty',
+            'reset', 'resetProperty', 'getPathByUuid',
+        ];
         expect(nodeMethods.length).toBeGreaterThan(0);
     });
 
     it('IServiceManager.Component should have component methods', () => {
         type CompKeys = keyof IServiceManager['Component'];
-        const compMethods: CompKeys[] = ['add', 'remove', 'setProperty', 'query', 'queryAll'];
+        const compMethods: CompKeys[] = [
+            'add', 'remove', 'setProperty', 'query', 'queryAll',
+            'reset', 'queryClasses', 'queryComponents', 'hasScript',
+        ];
         expect(compMethods.length).toBeGreaterThan(0);
+    });
+
+    it('IServiceManager.Prefab should have prefab methods', () => {
+        type PrefabKeys = keyof IServiceManager['Prefab'];
+        const prefabMethods: PrefabKeys[] = [
+            'createPrefabFromNode', 'applyPrefabChanges', 'revertToPrefab',
+            'unpackPrefabInstance', 'isPrefabInstance', 'getPrefabInfo',
+        ];
+        expect(prefabMethods).toHaveLength(6);
+    });
+
+    it('IServiceManager.Camera should have camera methods', () => {
+        type CameraKeys = keyof IServiceManager['Camera'];
+        const cameraMethods: CameraKeys[] = [
+            'init', 'focus', 'changeProjection', 'queryConfig',
+            'zoomUp', 'zoomDown', 'zoomReset',
+        ];
+        expect(cameraMethods.length).toBeGreaterThan(0);
+    });
+
+    it('IServiceManager.Selection should have selection methods', () => {
+        type SelectionKeys = keyof IServiceManager['Selection'];
+        const selectionMethods: SelectionKeys[] = [
+            'select', 'unselect', 'clear', 'query', 'isSelect', 'reset',
+        ];
+        expect(selectionMethods).toHaveLength(6);
+    });
+
+    it('IServiceManager.Undo should have undo methods', () => {
+        type UndoKeys = keyof IServiceManager['Undo'];
+        const undoMethods: UndoKeys[] = [
+            'beginRecording', 'endRecording', 'cancelRecording',
+            'undo', 'redo', 'canUndo', 'reset', 'isDirty',
+        ];
+        expect(undoMethods).toHaveLength(8);
     });
 
     it('GlobalEventManager should have event methods', () => {

@@ -19,10 +19,10 @@ export * from './scene';
  * 事件类型
  */
 export interface IEditorEvents {
-    'editor:open': [];
+    'editor:open': [scene?: any];
     'editor:close': [];
     'editor:save': [];
-    'editor:reload': [];
+    'editor:reload': [scene?: any];
 }
 
 /**

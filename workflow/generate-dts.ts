@@ -109,7 +109,7 @@ async function postProcessDts(filePath: string) {
     // api-extractor demotes types not in the entry's export chain to bare
     // `declare interface/type/enum/...` (no `export`). Promote them back so
     // consumers can import any type that was originally exported in source.
-    const promoteRe = /^declare (interface|type|enum|class|function|const|abstract class) /gm;
+    const promoteRe = /^declare (interface|type|enum|class|function|const|abstract class|namespace) /gm;
     if (promoteRe.test(content)) {
         promoteRe.lastIndex = 0;
         content = content.replace(promoteRe, 'export declare $1 ');

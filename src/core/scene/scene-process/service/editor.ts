@@ -164,7 +164,7 @@ export class EditorService extends BaseService<IEditorEvents> implements IEditor
 
             // 设置当前打开的编辑器
             this.currentEditorUuid = assetInfo.uuid;
-            this.emit('editor:open');
+            this.emit('editor:open', cc.director.getScene());
             this.isOpen = true;
             console.log(`打开 ${assetInfo.url}`);
             return encode;

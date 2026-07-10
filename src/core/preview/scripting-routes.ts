@@ -86,11 +86,13 @@ export const scriptingRoutes = [
                         filePath = fallbackPath;
                     }
                 }
-                // 目录白名单：只允许读取引擎目录下的文件（editor-stub 请求的路径均来自
-                // query-engine-info 返回的 native/typescript 路径），拒绝任意系统文件读取。
+                // 目录白名单：只允许读取引擎目录 + 当前项目目录下的文件，拒绝任意系统文件读取。
+                // editor-stub 的请求来自两处：引擎 native/typescript 路径（wasm 等），以及场景编辑器
+                // 预览的 ScriptService.init 通过 window.require 读取项目编译脚本（<project>/library/**）。
                 const { Engine } = await import('../engine');
                 const info: any = Engine.getInfo();
-                const allowedRoots = [GlobalPaths.enginePath, info?.native?.path, info?.typescript?.path]
+                const { default: scripting } = await import('../../core/scripting');
+                const allowedRoots = [GlobalPaths.enginePath, info?.native?.path, info?.typescript?.path, scripting.projectPath]
                     .filter((p): p is string => !!p)
                     .map((p) => path.resolve(p));
                 const resolved = path.resolve(filePath);

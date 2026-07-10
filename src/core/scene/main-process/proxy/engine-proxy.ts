@@ -7,5 +7,5 @@ export const EngineProxy: IPublicEngineService = {
     },
     repaintInEditMode() {
         return Rpc.getInstance().request('Engine', 'repaintInEditMode');
-    }
+    },
 };

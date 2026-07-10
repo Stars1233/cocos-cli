@@ -4,6 +4,7 @@ import { basename, join } from 'path';
 import ejs from 'ejs';
 import { GlobalPaths } from '../../global';
 import { scriptingRoutes } from '../preview/scripting-routes';
+import { pathExists } from 'fs-extra';
 
 export default {
     get: [
@@ -25,6 +26,41 @@ export default {
                     const templatePath = join(GlobalPaths.workspace, 'static', 'web', 'scene-editor.ejs');
                     const html = await ejs.renderFile(templatePath, renderData);
                     res.status(200).send(html);
+                } catch (err) {
+                    next(err);
+                }
+            },
+        },
+        {
+            url: '/preview',
+            async handler(req: Request, res: Response, next: NextFunction) {
+                try {
+                    const { default: scripting } = await import('../../core/scripting');
+                    const serverBaseUrl = `${req.protocol}://${req.get('host')}`;
+                    const renderData = {
+                        title: `Resource Preview - ${basename(scripting.projectPath)}`,
+                        serverURL: serverBaseUrl
+                    };
+                    const templatePath = join(GlobalPaths.workspace, 'static', 'web', 'preview.ejs');
+                    const html = await ejs.renderFile(templatePath, renderData);
+                    res.status(200).send(html);
+                } catch (err) {
+                    next(err);
+                }
+            },
+        },
+        {
+            url: '/scripting/effect-settings',
+            async handler(req: Request, res: Response, next: NextFunction) {
+                try {
+                    const { default: scripting } = await import('../../core/scripting');
+                    const effectBinPath = join(scripting.projectPath, 'temp', 'cli', 'asset-db', 'effect', 'effect.bin');
+                    if (await pathExists(effectBinPath)) {
+                        res.setHeader('Content-Type', 'application/octet-stream');
+                        res.sendFile(effectBinPath);
+                    } else {
+                        res.status(404).send('effect.bin not found');
+                    }
                 } catch (err) {
                     next(err);
                 }

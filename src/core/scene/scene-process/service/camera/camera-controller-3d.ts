@@ -180,6 +180,7 @@ export class CameraController3D extends CameraControllerBase {
     private _curRot = new Quat();
     private _curEye = new Vec3();
 
+
     private _lineColor = new Color(85, 85, 85, 255);
 
     public lastMouseWheelDeltaY = 0;
@@ -438,8 +439,8 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     // ---------- 模式切换 ----------
-
     changeMode(modeCommand: ModeCommand) {
+        if (!this._modeFSM) return;
         this._modeFSM.issueCommand(modeCommand);
         let mode = CameraMoveMode.IDLE;
         switch (modeCommand) {
@@ -505,11 +506,6 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     // ---------- 焦点 ----------
-
-    isMoving(): boolean {
-        return this._modeFSM.currentState !== this._idleMode;
-    }
-
     private focusByNode(nodes: Node[], notChangeDist = true, immediate = false) {
         if (nodes.length === 0) return;
 
@@ -761,12 +757,17 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     // ---------- 鼠标/键盘事件 ----------
+    isMoving(): boolean {
+        return this._modeFSM?.currentState !== this._idleMode;
+    }
 
     onMouseDBlDown(event: ISceneMouseEvent) {
+        if (!this._modeFSM) return;
         return (this._modeFSM.currentState as ModeBase3D).onMouseDBlDown(event);
     }
 
     onMouseDown(event: ISceneMouseEvent) {
+        if (!this._modeFSM) return;
         this.altKey = event.altKey;
         this.shiftKey = event.shiftKey;
         this.mousePressing = true;
@@ -786,6 +787,7 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     onMouseMove(event: ISceneMouseEvent) {
+        if (!this._modeFSM) return;
         this.shiftKey = event.shiftKey;
         this.altKey = event.altKey;
 
@@ -803,6 +805,7 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     onMouseUp(event: ISceneMouseEvent) {
+        if (!this._modeFSM) return;
         this.mousePressing = false;
 
         const isViewMode = !!Service.Gizmo?.isViewMode;
@@ -824,6 +827,7 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     onMouseWheel(event: ISceneMouseEvent) {
+        if (!this._modeFSM) return;
         if ((this._modeFSM.currentState as ModeBase3D).modeName !== CameraMoveMode.WANDER) {
             let deltaY = event.deltaY;
             if (Math.abs(deltaY - this.lastMouseWheelDeltaY) > this.maxMouseWheelDeltaY) {
@@ -837,6 +841,7 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     onKeyDown(event: ISceneKeyboardEvent) {
+        if (!this._modeFSM) return;
         this.shiftKey = event.shiftKey;
         this.altKey = event.altKey;
 
@@ -857,6 +862,7 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     onKeyUp(event: ISceneKeyboardEvent) {
+        if (!this._modeFSM) return;
         this.shiftKey = event.shiftKey;
         this.altKey = event.altKey;
 
@@ -882,6 +888,7 @@ export class CameraController3D extends CameraControllerBase {
     }
 
     onUpdate(deltaTime: number) {
+        if (!this._modeFSM) return;
         (this._modeFSM.currentState as ModeBase3D).onUpdate(deltaTime);
     }
 

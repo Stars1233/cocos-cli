@@ -63,7 +63,7 @@ export class EngineService extends BaseService<IEngineEvents> implements IEngine
 
     public setTimeout(callback: any, time: number) {
         if (this._capture) {
-            // eslint-disable-next-line no-undef
+             
             this._rafId = requestAnimationFrame(callback);
         } else {
             this._setTimeoutId = setTimeout(callback, time);
@@ -76,7 +76,7 @@ export class EngineService extends BaseService<IEngineEvents> implements IEngine
             this._setTimeoutId = null;
         }
         if (this._rafId) {
-            // eslint-disable-next-line no-undef
+             
             cancelAnimationFrame(this._rafId);
             this._rafId = null;
         }
@@ -255,6 +255,7 @@ export class EngineService extends BaseService<IEngineEvents> implements IEngine
         this._paused = true;
     }
 
+
     // 与 cocos-editor 一致：检查节点是否含有粒子/地形组件，控制连续 tick
     public checkToSetAnimState(nodes: Node[]) {
         let hasParticleComp = false;
@@ -298,8 +299,8 @@ export class EngineService extends BaseService<IEngineEvents> implements IEngine
                 this.broadcast('engine:update');
 
                 // Dispatch per-frame updates to Camera and Gizmo services
-                try { Service.Camera?.onUpdate?.(Time.deltaTime); } catch (e) { /* not registered yet */ }
-                try { Service.Gizmo?.onUpdate?.(Time.deltaTime); } catch (e) { /* not registered yet */ }
+                try { Service.Camera?.onUpdate?.(Time.deltaTime); } catch { /* not registered yet */ }
+                try { Service.Gizmo?.onUpdate?.(Time.deltaTime); } catch { /* not registered yet */ }
             }
             this.broadcast('engine:ticked');
         } catch (e) {
@@ -459,21 +460,20 @@ export class EngineService extends BaseService<IEngineEvents> implements IEngine
     // 与 cocos-editor ParticleManager.getSelectedParticleSystemComponents 一致
     private _getSelectedParticleSystems(): Component[] {
         const result: Component[] = [];
-        const self = this;
 
-        function addUnique(comps: Component[]) {
+        const addUnique = (comps: Component[]) => {
             for (const comp of comps) {
                 if (!result.includes(comp)) {
                     result.push(comp);
                 }
             }
-        }
+        };
 
-        function collectInChildren(node: Node): Component[] {
+        const collectInChildren = (node: Node): Component[] => {
             const found: Component[] = [];
             if (node.components) {
                 for (const comp of node.components) {
-                    if (self._isParticleSystem3D(comp)) {
+                    if (this._isParticleSystem3D(comp)) {
                         found.push(comp);
                     }
                 }
@@ -484,19 +484,19 @@ export class EngineService extends BaseService<IEngineEvents> implements IEngine
                 }
             }
             return found;
-        }
+        };
 
-        function recursivelyAdd(node: Node) {
-            const hasParticle = node.components?.some((c: Component) => self._isParticleSystem3D(c));
+        const recursivelyAdd = (node: Node) => {
+            const hasParticle = node.components?.some((c: Component) => this._isParticleSystem3D(c));
             if (hasParticle) {
                 const parent = node.parent;
-                if (parent && parent.components?.some((c: Component) => self._isParticleSystem3D(c))) {
+                if (parent && parent.components?.some((c: Component) => this._isParticleSystem3D(c))) {
                     recursivelyAdd(parent);
                 } else {
                     addUnique(collectInChildren(node));
                 }
             }
-        }
+        };
 
         for (const uuid of this._particleSelectedUUIDs) {
             const node = this._getNodeByUuid(uuid);

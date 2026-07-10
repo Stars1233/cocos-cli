@@ -12,6 +12,8 @@ export interface IEngineEvents {
 
 export interface IPublicEngineService extends Omit<IEngineService,
     'initCustomLayer' |
+    'pause' | 
+    'resume' |
     'enterAnimationMode' |
     'exitAnimationMode' |
     keyof IServiceEvents
@@ -28,6 +30,8 @@ export interface IEngineService extends IServiceEvents {
      */
     repaintInEditMode(): Promise<void>;
 
+    pause(): void;
+    resume(): void;
     /**
      * 初始化自定义 Layer 配置
      */

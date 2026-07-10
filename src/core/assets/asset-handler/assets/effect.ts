@@ -12,7 +12,7 @@ import {
     buildLayoutGraphData,
     getLayoutGraphDataVersion,
 } from 'cc/editor/custom-pipeline';
-import { existsSync, readFileSync, writeFileSync, ensureDir, readJSON, writeFile } from 'fs-extra';
+import { existsSync, readFileSync, readdirSync, writeFileSync, ensureDir, readJSON, writeFile } from 'fs-extra';
 import { basename, dirname, extname, join, relative, resolve } from 'path';
 import { buildEffect, options, addChunk } from '../../effect-compiler';
 
@@ -276,11 +276,43 @@ export async function afterImport(force?: boolean) {
             }
         });
     });
-    if (!effectList.length) {
-        console.debug('no effect to compile');
+    if (effectList.length) {
+        await recompileAllEffects(effectList, force);
         return;
     }
-    await recompileAllEffects(effectList, force);
+    // Fallback: scan pre-built .effect.meta files from each DB's target directory.
+    // The internal DB ships with a pre-built library so effect.bin can be generated
+    // even when the full import pipeline hasn't processed .effect files.
+    const fallbackEffects = collectPrebuiltEffects();
+    if (fallbackEffects.length) {
+        console.debug(`[effect] Using ${fallbackEffects.length} pre-built effect library files`);
+        await recompileAllEffects(fallbackEffects as any, force);
+        return;
+    }
+    console.debug('no effect to compile');
+}
+
+function collectPrebuiltEffects(): Array<{ imported: boolean; library: string }> {
+    const effects: Array<{ imported: boolean; library: string }> = [];
+    for (const dbInfo of assetConfig.data.assetDBList) {
+        if (!dbInfo.library) continue;
+        const effectsDir = join(dbInfo.target, 'effects');
+        if (!existsSync(effectsDir)) continue;
+        try {
+            const allFiles = readdirSync(effectsDir, { recursive: true, encoding: 'utf-8' });
+            for (const relFile of allFiles) {
+                if (!relFile.endsWith('.effect.meta')) continue;
+                try {
+                    const meta = JSON.parse(readFileSync(join(effectsDir, relFile), 'utf-8'));
+                    if (meta.importer !== 'effect' || !meta.imported || !meta.uuid) continue;
+                    const libraryPath = join(dbInfo.library!, meta.uuid.substring(0, 2), meta.uuid);
+                    if (!existsSync(libraryPath + '.json')) continue;
+                    effects.push({ imported: true, library: libraryPath });
+                } catch { /* skip invalid meta */ }
+            }
+        } catch { /* skip inaccessible dirs */ }
+    }
+    return effects;
 }
 
 function forceRecompileEffects(file: string): boolean {

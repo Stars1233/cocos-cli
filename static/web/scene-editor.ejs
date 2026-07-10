@@ -7,7 +7,7 @@
     <base href="/">
     <title><%= title %></title>
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover"/>
-    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="mobile-web-app-capable" content="yes"/>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <meta name="renderer" content="webkit"/>
@@ -413,6 +413,9 @@
     <script type="module">
         const { default: boot } = await import("/static/web/scene-editor-boot.js");
         await boot();
+        if (window.cli && window.cli.Scene && window.cli.Scene.Engine) {
+            window.cli.Scene.Engine.resume();
+        }
     </script>
     <script>
         /* ── Helpers ── */
@@ -694,7 +697,7 @@
             const sel = document.getElementById('nodeList');
             sel.innerHTML = '<option value="">loading...</option>';
             try {
-                const root = await window.cli.Scene.Node.queryNode({
+                const root = await window.cli.Scene.Node.query({
                     path: '/', queryChildren: true, queryComponent: false
                 });
                 sel.innerHTML = '';

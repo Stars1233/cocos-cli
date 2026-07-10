@@ -961,8 +961,7 @@ export { }
 exports[`DTS API compatibility builder.d.ts should match snapshot 1`] = `
 "import EventEmitter from 'events';
 import { EventEmitter as EventEmitter_2 } from 'stream';
-import { IAssetDeleteOptions } from './filesystem';
-import { IAssetWriteFileOptions } from './filesystem';
+import { IAssetDeleteOptions, IAssetWriteFileOptions } from '@cocos/asset-db/libs/filesystem';
 import type { PluginItem } from '@babel/core';
 import { SpriteFrame } from 'cc';
 export declare interface AcornNode {
@@ -1556,7 +1555,7 @@ export declare interface BundleRenderConfig {
     maxOptionList: Record<string, any[]>;
     minOptionList?: Record<string, any[]>;
 }
-export declare type CCEnvConstants = ConstantManager.CCEnvConstants;
+export declare type CCEnvConstants = StatsQuery.ConstantManager.CCEnvConstants;
 export declare type ChangeEvent = 'create' | 'update' | 'delete';
 export declare function checkBuildOption(platform: string, key: string, value: unknown, options: IBuildTaskOption): Promise<BuildCheckResult>;
 export declare function checkBuildOptions(platform: string, options: IBuildTaskOption): Promise<Record<string, BuildCheckResult>>;
@@ -1644,7 +1643,7 @@ export declare interface Config {
     optimizeDecorators: IOptimizeDecorators;
     treeShake?: ITreeShakeConfig;
 }
-declare namespace ConfigInterface {
+export declare namespace ConfigInterface {
     export {
         Config,
         IndexConfig,
@@ -4468,7 +4467,7 @@ export declare type ResolveImportMetaHook = (
 	prop: string | null,
 	options: { chunkId: string; format: InternalModuleFormat; moduleId: string }
 ) => string | null | void;
-declare namespace rollup {
+export declare namespace rollup {
     export {
         rollup_2 as rollup,
         watch,
@@ -4910,7 +4909,7 @@ export declare class StatsQuery {
     private _featureUnits;
     private _editorPublicModules;
 }
-declare namespace StatsQuery {
+export declare namespace StatsQuery {
     namespace ConstantManager {
         type PlatformType = 'WEB_EDITOR' | 'WEB_MOBILE' | 'WEB_DESKTOP' | 'WECHAT' | 'WECHAT_MINI_PROGRAM' | 'BYTEDANCE' | 'ALIPAY' | 'TAOBAO' | 'TAOBAO_MINIGAME' | 'OPPO' | 'VIVO' | 'HUAWEI' | 'HONOR' | 'COCOS_RUNTIME' | 'SUD' | 'SUDV2' | 'NATIVE_EDITOR' | 'ANDROID' | 'WINDOWS' | 'IOS' | 'MAC' | 'OHOS' | 'OPEN_HARMONY' | 'LINUX' | 'HTML5' | 'NATIVE' | 'NODEJS' | 'INVALID_PLATFORM';
         type IPlatformConfig = { [key in PlatformType]: boolean };
@@ -6177,6 +6176,8 @@ export declare interface IEditorService extends IServiceEvents {
 export declare interface IEngineService extends IServiceEvents {
     init(): Promise<void>;
     repaintInEditMode(): Promise<void>;
+    pause(): void;
+    resume(): void;
     initCustomLayer(layers?: ICustomLayerConfig[]): Promise<void>;
     enterAnimationMode(): void;
     exitAnimationMode(): void;
@@ -6387,6 +6388,20 @@ export declare interface IPrefabStateInfo {
     isAddedChild: boolean;
     isNested: boolean;
     assetUuid: string;
+}
+export declare interface IPreviewInstance {
+    onMouseDown(event: any): void;
+    onMouseMove(event: any): void;
+    onMouseUp(event: any): void;
+    onMouseWheel(event: any): void;
+    viewToggle(): void;
+    is2DView(): boolean;
+    resetCameraView(): void;
+    hide(): void;
+}
+export declare interface IPreviewService {
+    open(uuid: string): Promise<IPreviewInstance | null>;
+    generateThumbnail(uuid: string, assetType: string, width?: number, height?: number): Promise<any>;
 }
 export declare interface IProperty {
     value: { [key: string]: IPropertyValueType } | IPropertyValueType;
@@ -6602,6 +6617,7 @@ export declare interface IServiceManager {
     Camera: ICameraService;
     Gizmo: IGizmoService;
     SceneView: ISceneViewService;
+    Preview: IPreviewService;
     UI: IUIService;
 }
 export declare interface ISetParentParams {

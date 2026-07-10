@@ -27,6 +27,8 @@ import {
     IGizmoService,
     IPublicSceneViewService,
     ISceneViewService,
+    IPublicPreviewService,
+    IPreviewService,
     IPublicUIService,
     IUIService,
     IAnimationService,
@@ -50,6 +52,7 @@ export interface IPublicServiceManager {
     Camera: IPublicCameraService,
     Gizmo: IPublicGizmoService,
     SceneView: IPublicSceneViewService,
+    Preview: IPublicPreviewService,
     UI: IPublicUIService,
 }
 
@@ -69,5 +72,6 @@ export interface IServiceManager {
     Camera: ICameraService,
     Gizmo: IGizmoService,
     SceneView: ISceneViewService,
+    Preview: IPreviewService,
     UI: IUIService,
 }

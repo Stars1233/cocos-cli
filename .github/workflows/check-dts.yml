@@ -38,6 +38,17 @@ jobs:
           npx jest --roots packages/cocos-cli-types --testPathPattern dts-snapshot --no-cache -u
           npx jest packages/cocos-cli-types --roots="<rootDir>/packages/cocos-cli-types"
 
+      - name: Typecheck DTS declarations
+        shell: bash
+        run: |
+          errors=$(npx tsc -p packages/cocos-cli-types/tsconfig.typecheck.json --noEmit 2>&1 | grep "^packages/cocos-cli-types/" || true)
+          if [ -n "$errors" ]; then
+            echo "::error::DTS typecheck failed — type errors found in cocos-cli-types declarations:"
+            echo "$errors"
+            exit 1
+          fi
+          echo "DTS typecheck passed."
+
       - name: Check DTS API compatibility
         shell: bash
         env:

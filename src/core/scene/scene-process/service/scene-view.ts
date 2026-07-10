@@ -61,12 +61,19 @@ export class SceneViewService extends BaseService<ISceneViewEvents> implements I
 
     onEditorOpened(): void {
         const scene = (cc as any).director?.getScene();
-        lightManager.onEditorOpened(scene, sceneViewData.isSceneLightOn);
+        if (scene) {
+            lightManager.onEditorOpened(scene, sceneViewData.isSceneLightOn);
+        }
 
+        // Parent light node to editor camera node (aligned with editor's init())
         if (this._lightNode) {
-            const cameraNode = (Service as any).Camera?.camera?.node;
-            if (cameraNode) {
-                this._lightNode.parent = cameraNode;
+            try {
+                const cameraNode = (Service as any).Camera?.camera?.node;
+                if (cameraNode) {
+                    this._lightNode.parent = cameraNode;
+                }
+            } catch (e) {
+                // Camera not ready
             }
         }
     }
