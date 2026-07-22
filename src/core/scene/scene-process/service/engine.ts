@@ -4,7 +4,8 @@ import Time from './engine/time';
 import { Component, director, GeometryRenderer as CCGeometryRenderer, Node } from 'cc';
 import { GeometryRenderer, methods as GeometryMethods } from './engine/geometry_renderer';
 import { BaseService, register } from './core';
-import { Service } from './core/decorator';
+import { ServiceEvents } from './core/global-events';
+import { Service, queryRegisteredService } from './core/decorator';
 import type { ICustomLayerConfig, IEngineEvents, IEngineService } from '../../common';
 import { NodeEventType } from '../../common';
 import { Rpc } from '../rpc';
@@ -200,6 +201,92 @@ export class EngineService extends BaseService<IEngineEvents> implements IEngine
                 cc.Layers.addLayer(layer.name, index);
             }
         });
+    }
+
+    /**
+     * 运行时重建物理碰撞分组枚举（cc.internal.PhysicsGroup / PhysicsGroup2D）。
+     *
+     * 分组只在 cc.game.init 时从 physics.collisionGroups 读一次并生成枚举，改配置后不重建就要重启 IDE
+     * （属性面板 Group 下拉的 enumList 直接来自该枚举）。这里对齐 cocos-editor 的 updatePhysicsGroup：
+     * 用 cc.Enum.update 就地更新枚举，再对当前选中节点广播 node:change，让属性面板重新 dump 拿到新分组。
+     *
+     * 与 cocos-editor 不同点：这里按「内置 DEFAULT + 当前分组」完整重建，先清掉所有旧的用户分组条目，
+     * 以支持分组的删除 / 重命名（editor 只做覆盖，删除后残留旧项）。
+     */
+    public updatePhysicsGroup(groups: { index: number; name: string }[] = []) {
+        const internal = (cc as any).internal;
+        const enums = [internal?.PhysicsGroup, internal?.PhysicsGroup2D].filter(Boolean);
+        if (!enums.length) {
+            return;
+        }
+
+        // 引擎内置 DEFAULT 分组（PhysicsGroup / PhysicsGroup2D 均为 1<<0），恒定保留
+        const DEFAULT_VALUE = 1 << 0;
+
+        // 目标用户分组（name→value）
+        const desired: Record<string, number> = {};
+        (groups || []).forEach((group) => {
+            if (!group || typeof group.index !== 'number' || !group.name) {
+                return;
+            }
+            desired[group.name] = 1 << group.index;
+        });
+
+        enums.forEach((e: any) => {
+            // 先移除所有非内置（DEFAULT）的旧用户分组条目，含 name→value 与 value→name 反向映射，
+            // 这样删除 / 重命名的分组不会残留。__enums__ 必须保留，否则 Enum.isEnum 失败、Enum.update 抛错。
+            for (const key of Object.keys(e)) {
+                if (key === '__enums__') {
+                    continue;
+                }
+                const v = e[key];
+                if (typeof v === 'number') {
+                    // name → value 条目
+                    if (v !== DEFAULT_VALUE) {
+                        delete e[key];
+                    }
+                } else if (typeof v === 'string') {
+                    // value → name 反向映射
+                    if (Number(key) !== DEFAULT_VALUE) {
+                        delete e[key];
+                    }
+                }
+            }
+            Object.assign(e, desired);
+            cc.Enum.update(e);
+        });
+
+        // 通知属性面板重新 dump，刷新 Group 下拉。
+        // 关键：仅「路径级」node:change 只刷新属性“值”，不会重取 enumList（元数据）；必须像 setProperty
+        // 那样带上具体属性的 propPath（node.components 里碰撞体的 group），面板才会重 dump 该属性、更新下拉
+        // 选项。这与用户“切换 group 后才出现新分组”走的是同一条通道。
+        const NodeMgr = ((cc as any).EditorExtends || (globalThis as any).EditorExtends)?.Node;
+        const selection = queryRegisteredService<{ query?: () => string[] }>('Selection');
+        const paths: string[] = selection?.query?.() ?? [];
+        for (const path of paths) {
+            if (!path) {
+                continue;
+            }
+            const node: any = NodeMgr?.getNodeByPath?.(path);
+            if (!node) {
+                // 定位不到节点时，退回路径级 node:change
+                ServiceEvents.broadcast('node:change', path);
+                continue;
+            }
+            const comps: any[] = node.components || [];
+            let matched = false;
+            comps.forEach((comp, index) => {
+                // 碰撞体（Collider / Collider2D）用 group 属性引用 PhysicsGroup 枚举
+                if (comp && typeof comp.group === 'number') {
+                    matched = true;
+                    ServiceEvents.emit('node:change', node, { type: NodeEventType.SET_PROPERTY, propPath: `_components.${index}.group` });
+                }
+            });
+            if (!matched) {
+                // 选中节点上没有碰撞体：仍发一次路径级 node:change 兜底
+                ServiceEvents.broadcast('node:change', path);
+            }
+        }
     }
 
     public setFrameRate(fps: number) {

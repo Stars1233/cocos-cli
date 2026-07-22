@@ -249,6 +249,26 @@ export const scriptingRoutes = [
             const { Engine } = await import('../engine');
             const serverBaseUrl = `${req.protocol}://${req.get('host')}`;
             const config = await Engine.getGameConfig(serverBaseUrl, serverBaseUrl, serverBaseUrl);
+            // 直接读磁盘上的 cocos.config.json（配置真相源），以最新物理碰撞分组覆盖缓存值。
+            // 原因同 design-resolution / modules 路由：Engine._config 只在 configuration:save 时刷新，
+            // 改分组后不读盘兜底，预览重载仍会按旧枚举构建 cc.PhysicsGroup，导致新分组在预览里不生效。
+            try {
+                const { configurationManager } = await import('../configuration');
+                const fse = await import('fs-extra');
+                const configPath = await configurationManager.getConfigPath();
+                if (await fse.pathExists(configPath)) {
+                    const json = await fse.readJSON(configPath);
+                    const diskGroups = json?.engine?.physicsConfig?.collisionGroups;
+                    if (Array.isArray(diskGroups)) {
+                        const cfg = config as any;
+                        cfg.overrideSettings = cfg.overrideSettings || {};
+                        cfg.overrideSettings.physics = cfg.overrideSettings.physics || {};
+                        cfg.overrideSettings.physics.collisionGroups = diskGroups;
+                    }
+                }
+            } catch (error) {
+                console.debug('[game-config] read cocos.config.json collisionGroups failed, fallback to cached:', error);
+            }
             res.json(config);
         },
     },
