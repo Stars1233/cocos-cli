@@ -18,6 +18,9 @@ const mockService = {
     },
     Undo: {
         createCheckpoint: jest.fn(() => ({ commandId: null, generation: 0 })),
+        hasScopedDifference: jest.fn(() => false),
+        hasScopedDifferenceAfterCheckpoint: jest.fn(() => false),
+        discardScopedChangesAfterCheckpoint: jest.fn(async () => ({ success: true })),
         hasDifferenceOutsideScope: jest.fn(() => false),
         isDirty: jest.fn(() => false),
         markSaved: jest.fn(),
@@ -103,6 +106,27 @@ describe('AnimationService enter', () => {
         assetManager.assets.get.mockReset();
         assetManager.loadAny.mockReset();
         saveAnimationServiceClipMock.mockResolvedValue(true);
+    });
+
+    it('treats undoing a saved checkpoint command as animation dirty without changing discard scope detection', () => {
+        const service = new AnimationService() as any;
+        const session = {
+            clipUuid: 'clip-uuid',
+            undoBaseline: {
+                commandId: 'saved-animation-command',
+                generation: 0,
+                includeCheckpointCommand: true,
+            },
+        };
+        mockService.Undo.hasScopedDifference.mockReturnValue(true);
+        mockService.Undo.hasScopedDifferenceAfterCheckpoint.mockReturnValue(false);
+
+        expect(service._isAnimationSessionDirty(session)).toBe(true);
+        expect(mockService.Undo.hasScopedDifference).toHaveBeenCalledWith(
+            session.undoBaseline,
+            { assetUuid: 'clip-uuid', editorType: 'animation', mode: 'animation' },
+        );
+        expect(mockService.Undo.hasScopedDifferenceAfterCheckpoint).not.toHaveBeenCalled();
     });
 
     it('matches current clip queries with normalized root paths', () => {

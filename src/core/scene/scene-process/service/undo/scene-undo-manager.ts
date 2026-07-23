@@ -171,6 +171,97 @@ class SceneUndoManager {
         return this._hasDifferenceSince(checkpoint, command => matchesUndoScope(command.meta.scope, scope));
     }
 
+    hasScopedDifferenceAfterCheckpoint(checkpoint: IUndoCheckpoint, scope: Partial<IUndoScope>): boolean {
+        if (checkpoint.generation !== this._checkpointGeneration) {
+            return false;
+        }
+        const checkpointIndex = this._resolveCheckpointIndex(checkpoint);
+        if (checkpointIndex === undefined || this._index <= checkpointIndex) {
+            return false;
+        }
+        for (let index = checkpointIndex + 1; index <= this._index; index++) {
+            const command = this._commandArray[index];
+            if (command && matchesUndoScope(command.meta.scope, scope)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    async discardScopedChangesAfterCheckpoint(
+        checkpoint: IUndoCheckpoint,
+        scope: Partial<IUndoScope>,
+    ): Promise<IUndoRedoResult> {
+        return this._enqueue(async () => {
+            if (checkpoint.generation !== this._checkpointGeneration) {
+                return { success: true };
+            }
+            const checkpointIndex = this._resolveCheckpointIndex(checkpoint);
+            const originalIndex = this._index;
+            if (checkpointIndex === undefined || originalIndex <= checkpointIndex) {
+                return { success: true };
+            }
+
+            const originalCommands = [...this._commandArray];
+            const appliedCommands = originalCommands.slice(checkpointIndex + 1, originalIndex + 1);
+            const discardedCommands = appliedCommands.filter(command => matchesUndoScope(command.meta.scope, scope));
+            if (discardedCommands.length === 0) {
+                return { success: true };
+            }
+
+            const restoreCommands = async (commands: IUndoCommand[], direction: 'undo' | 'redo') => {
+                for (const command of commands) {
+                    const result = await this._applyCommand(command, direction);
+                    if (!result.success) {
+                        return result;
+                    }
+                }
+                return { success: true };
+            };
+
+            const undoneCommands: IUndoCommand[] = [];
+            for (let index = originalIndex; index > checkpointIndex; index--) {
+                const command = originalCommands[index];
+                if (!command) {
+                    continue;
+                }
+                const result = await this._applyCommand(command, 'undo');
+                if (!result.success) {
+                    for (const undoneCommand of [...undoneCommands].reverse()) {
+                        const restoreResult = await this._applyCommand(undoneCommand, 'redo');
+                        if (restoreResult.success) {
+                            this._index++;
+                        }
+                    }
+                    return result;
+                }
+                undoneCommands.push(command);
+                this._index--;
+            }
+
+            const keptCommands = appliedCommands.filter(command => !matchesUndoScope(command.meta.scope, scope));
+            this._commandArray.splice(checkpointIndex + 1, appliedCommands.length, ...keptCommands);
+            this._index = checkpointIndex;
+
+            const redoneCommands: IUndoCommand[] = [];
+            for (const command of keptCommands) {
+                const result = await this._applyCommand(command, 'redo');
+                if (!result.success) {
+                    await restoreCommands([...redoneCommands].reverse(), 'undo');
+                    this._commandArray.splice(0, this._commandArray.length, ...originalCommands);
+                    this._index = checkpointIndex;
+                    await restoreCommands(appliedCommands, 'redo');
+                    this._index = originalIndex;
+                    return result;
+                }
+                redoneCommands.push(command);
+                this._index++;
+            }
+
+            return { success: true };
+        });
+    }
+
     hasDifferenceOutsideScope(checkpoint: IUndoCheckpoint, scope: Partial<IUndoScope>): boolean {
         return this._hasDifferenceSince(checkpoint, command => !matchesUndoScope(command.meta.scope, scope));
     }

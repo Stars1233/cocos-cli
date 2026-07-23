@@ -13,6 +13,7 @@
  *   RemoveComponentCommand    | Component.remove              | 已覆盖
  *   RemoveNodeCommand         | Node.delete                   | 已覆盖
  *   snapshot setProperty      | Node.update                   | 已覆盖
+ *   scene property snapshot   | Node.setProperty('/')        | 已覆盖
  *   snapshot resetNode        | Node.reset (RPC)              | 已覆盖
  *   snapshot resetProperty    | Node.resetProperty (RPC)      | 已覆盖
  *   snapshot update null      | Node.updatePropertyFromNull   | 已覆盖
@@ -266,6 +267,53 @@ async function setNodeProperty(path: string, propPath: string, value: any, recor
         dump: { ...nodeDump[propPath], value },
         record,
     });
+}
+
+function readGlobalValue(sceneDump: any, path: string): any {
+    let current = sceneDump?._globals;
+    for (const key of path.split('.').slice(1)) {
+        current = current?.value && Object.prototype.hasOwnProperty.call(current.value, key)
+            ? current.value[key]
+            : current?.[key];
+    }
+    return current?.value ?? current;
+}
+
+function findGlobalScalarProperty(globals: Record<string, any>): { path: string; dump: any; value: boolean | number | string } | null {
+    const visit = (value: any, path: string): { path: string; dump: any; value: boolean | number | string } | null => {
+        if (!value || typeof value !== 'object') {
+            return null;
+        }
+        if ('type' in value && 'value' in value) {
+            if (value.readonly !== true && (typeof value.value === 'boolean' || typeof value.value === 'number' || typeof value.value === 'string')) {
+                return { path, dump: value, value: value.value };
+            }
+            if (value.value && typeof value.value === 'object' && !Array.isArray(value.value)) {
+                for (const [key, child] of Object.entries(value.value)) {
+                    const result = visit(child, `${path}.${key}`);
+                    if (result) {
+                        return result;
+                    }
+                }
+            }
+            return null;
+        }
+        for (const [key, child] of Object.entries(value)) {
+            const result = visit(child, path ? `${path}.${key}` : key);
+            if (result) {
+                return result;
+            }
+        }
+        return null;
+    };
+
+    for (const [key, value] of Object.entries(globals)) {
+        const result = visit(value, `_globals.${key}`);
+        if (result) {
+            return result;
+        }
+    }
+    return null;
 }
 
 async function readAssetContent(dbURL: string): Promise<string> {
@@ -675,6 +723,79 @@ describe('Undo/Redo 集成测试', () => {
     // ========================================================================
     // 基于快照：通过 Node.update 设置属性
     // ========================================================================
+    describe('scene snapshot properties', () => {
+        afterEach(async () => {
+            if (await Undo.canUndo()) {
+                await Undo.undo();
+            }
+            await Undo.clearHistory();
+        });
+
+        it('undo restores a top-level scene property through generic snapshot restore', async () => {
+            const sceneDump = await queryNodeDump('/');
+            const propertyDump = sceneDump?.autoReleaseAssets;
+            expect(propertyDump).toBeDefined();
+            if (!propertyDump) {
+                return;
+            }
+
+            const originalValue = propertyDump.value;
+            const nextValue = !originalValue;
+            expect(await Node.setProperty({
+                nodePath: '/',
+                path: 'autoReleaseAssets',
+                dump: { ...propertyDump, value: nextValue },
+            })).toBe(true);
+            expect((await queryNodeDump('/')).autoReleaseAssets.value).toBe(nextValue);
+
+            expectUndoSuccess(await Undo.undo());
+            expect((await queryNodeDump('/')).autoReleaseAssets.value).toBe(originalValue);
+
+            expectUndoSuccess(await Undo.redo());
+            expect((await queryNodeDump('/')).autoReleaseAssets.value).toBe(nextValue);
+        });
+    });
+
+    describe('scene _globals setProperty (snapshot)', () => {
+        afterEach(async () => {
+            if (await Undo.canUndo()) {
+                await Undo.undo();
+            }
+            await Undo.clearHistory();
+        });
+
+        it('undo restores a changed scene global and redo reapplies it', async () => {
+            const sceneDump = await queryNodeDump('/');
+            const globalProperty = findGlobalScalarProperty(sceneDump?._globals ?? {});
+            expect(globalProperty).not.toBeNull();
+            if (!globalProperty) {
+                return;
+            }
+
+            const nextValue = typeof globalProperty.value === 'boolean'
+                ? !globalProperty.value
+                : typeof globalProperty.value === 'number'
+                    ? globalProperty.value + 1
+                    : `${globalProperty.value}-undo`;
+
+            expect(await Node.setProperty({
+                nodePath: '/',
+                path: globalProperty.path,
+                dump: { ...globalProperty.dump, value: nextValue },
+            })).toBe(true);
+            expect(readGlobalValue(await queryNodeDump('/'), globalProperty.path)).toBe(nextValue);
+            expect(await Undo.canUndo()).toBe(true);
+
+            expectUndoSuccess(await Undo.undo());
+            const afterUndo = await queryNodeDump('/');
+            expect(readGlobalValue(afterUndo, globalProperty.path)).toBe(globalProperty.value);
+
+            expectUndoSuccess(await Undo.redo());
+            const afterRedo = await queryNodeDump('/');
+            expect(readGlobalValue(afterRedo, globalProperty.path)).toBe(nextValue);
+        });
+    });
+
     describe('setProperty (snapshot)', () => {
         const path = 'UndoSetProp';
 

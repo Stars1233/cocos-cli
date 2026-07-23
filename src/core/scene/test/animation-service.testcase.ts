@@ -1632,6 +1632,32 @@ describe('Animation Service 场景进程测试', () => {
         expect(redoDump.curves.some((curve: any) => curve.nodePath === childRelativePath && curve.key === 'position')).toBe(true);
     });
 
+    it('applyOperations 可删除空的 child active 属性轨道', async () => {
+        await ensureAnimationSession(childRootNodePath, childClipUuid);
+        await resetPropertyCurves(childRootNodePath, childClipUuid);
+
+        const childRelativePath = 'AnimationServiceChildSamplingChild';
+        const addResult = await request('applyOperations', [{
+            operations: [
+                { type: 'addPropertyCurve', clipUuid: childClipUuid, nodePath: childRelativePath, propKey: 'active', value: true },
+            ],
+        }]);
+        const afterAdd = await request('queryClip', [{ rootPath: childRootNodePath, clipUuid: childClipUuid }]);
+
+        expect(addResult).toEqual({ state: 'success', result: true });
+        expect(afterAdd.curves.some((curve: any) => curve.nodePath === childRelativePath && curve.key === 'active')).toBe(true);
+
+        const removeResult = await request('applyOperations', [{
+            operations: [
+                { type: 'removePropertyCurve', clipUuid: childClipUuid, nodePath: childRelativePath, propKey: 'active' },
+            ],
+        }]);
+        const afterRemove = await request('queryClip', [{ rootPath: childRootNodePath, clipUuid: childClipUuid }]);
+
+        expect(removeResult).toEqual({ state: 'success', result: true });
+        expect(afterRemove.curves.some((curve: any) => curve.nodePath === childRelativePath && curve.key === 'active')).toBe(false);
+    });
+
     it('applyOperations 可把已消费的 scene 属性 undo 合并进 animation scoped undo', async () => {
         await ensureAnimationSession(emptyNodePath, emptyClipUuid);
         await resetRootPositionCurve(emptyNodePath, emptyClipUuid);
@@ -1863,6 +1889,32 @@ describe('Animation Service 场景进程测试', () => {
         expect(await Undo.isDirty()).toBe(false);
         expect(await Undo.canUndo()).toBe(false);
         expect(await Undo.canRedo()).toBe(false);
+    });
+
+    it('exit discard restores animation clip edits made during the session', async () => {
+        const current = await request('queryState');
+        if (current.active) {
+            await request('exit', [{ save: false, restoreSelection: false }]);
+        }
+        await Undo.clearHistory();
+        await Undo.markSaved();
+        await request('enter', [{ rootPath: emptyNodePath, clipUuid: emptyClipUuid, restoreSelectionOnExit: false }]);
+
+        const before = await request('queryClip', [{ clipUuid: emptyClipUuid }]);
+        const result = await request('applyOperations', [{
+            operations: [
+                { type: 'createPropertyKey', clipUuid: emptyClipUuid, propKey: 'position', frame: 30, value: { x: 30, y: 0, z: 0 } },
+            ],
+        }]);
+        expect(result).toEqual({ state: 'success', result: true });
+        expect((await request('queryState')).dirty).toBe(true);
+
+        await request('exit', [{ save: false, restoreSelection: false }]);
+        await request('enter', [{ rootPath: emptyNodePath, clipUuid: emptyClipUuid, restoreSelectionOnExit: false }]);
+        const afterDiscard = await request('queryClip', [{ clipUuid: emptyClipUuid }]);
+
+        expect(afterDiscard.curves).toEqual(before.curves);
+        expect((await request('queryState')).dirty).toBe(false);
     });
 
     it('applyOperations recordUndo 为 false 时不写入 undo 栈', async () => {

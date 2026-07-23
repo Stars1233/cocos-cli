@@ -308,10 +308,6 @@ export function replacePropertyCurves(clip: AnimationClip, curves: IAnimationCur
 
         const keyframes = Array.isArray(curve.keyframes) ? [...curve.keyframes].sort((a, b) => a.frame - b.frame) : [];
         const channelDumps = Array.isArray(curve.channels) ? curve.channels : [];
-        if (keyframes.length === 0 && channelDumps.length === 0) {
-            continue;
-        }
-
         const track = createPropertyTrack(clip, curve.nodePath, descriptor);
         applyTrackExtrapolation(track, curve.preExtrap, curve.postExtrap);
         if (!restoreTrackKeyframes(clip, track, descriptor, keyframes, channelDumps)) {

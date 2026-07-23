@@ -163,6 +163,8 @@ export class AnimationService extends BaseService<Record<string, any>> implement
 
         if (options.save) {
             await this.save();
+        } else {
+            await this._discardAnimationSessionChanges(session);
         }
 
         await this._stopCurrent();
@@ -571,6 +573,7 @@ export class AnimationService extends BaseService<Record<string, any>> implement
         const rootNode = this._getSessionRootNode();
         const propertyMetadataContext = createAnimationPropertyCurveMetadataContext(rootNode);
         const savedSnapshot = captureAnimationClipSnapshot(state.clip, propertyMetadataContext);
+        const animationDirtyAtSave = this._isAnimationSessionDirty(session);
         ensureClipEvents(state.clip);
         this._markSelfSavedClipRefresh(session.clipUuid);
         let saved = false;
@@ -601,7 +604,10 @@ export class AnimationService extends BaseService<Record<string, any>> implement
                     Service.Undo.markSaved();
                 }
             }
-            session.undoBaseline = Service.Undo.createCheckpoint();
+            session.undoBaseline = {
+                ...Service.Undo.createCheckpoint(),
+                includeCheckpointCommand: animationDirtyAtSave,
+            };
             session.globalDirtyAtEnter = Service.Undo.isDirty();
         } else {
             this._selfSavedClipRefreshes.delete(session.clipUuid);
@@ -861,8 +867,20 @@ export class AnimationService extends BaseService<Record<string, any>> implement
         return getAnimationSessionRootNode(requireAnimationSession(this._session));
     }
 
+    private async _discardAnimationSessionChanges(session: IAnimationSession): Promise<void> {
+        const scope = this._createAnimationUndoScope(session.clipUuid);
+        const result = await Service.Undo.discardScopedChangesAfterCheckpoint(session.undoBaseline, scope);
+        if (!result.success) {
+            throw new Error(result.reason || 'Failed to discard animation changes.');
+        }
+    }
+
     private _isAnimationSessionDirty(session: IAnimationSession): boolean {
-        return Service.Undo.hasScopedDifference(session.undoBaseline, this._createAnimationUndoScope(session.clipUuid));
+        const scope = this._createAnimationUndoScope(session.clipUuid);
+        if (session.undoBaseline.includeCheckpointCommand) {
+            return Service.Undo.hasScopedDifference(session.undoBaseline, scope);
+        }
+        return Service.Undo.hasScopedDifferenceAfterCheckpoint(session.undoBaseline, scope);
     }
 
     private _createAnimationUndoScope(clipUuid: string): Partial<IUndoScope> {

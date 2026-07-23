@@ -6,7 +6,15 @@ import AssetUtil from './asset';
 import { decodePatch, decodeNode, decodeScene, resetProperty, updatePropertyFromNull } from './decode';
 import { encodeObject, encodeComponent, encodeScene, encodeNode } from './encode';
 import { IComponent, INode, IScene } from '../../../common';
-import { NODE_SNAPSHOT_RESTORE_PROPERTY_PATHS, COMPONENT_SNAPSHOT_RESTORE_SKIP_KEYS } from './restore-policy';
+import {
+    NODE_SNAPSHOT_RESTORE_PROPERTY_PATHS,
+    SCENE_SNAPSHOT_SPECIAL_PROPERTY_KEYS,
+    COMPONENT_SNAPSHOT_RESTORE_SKIP_KEYS,
+} from './restore-policy';
+
+function isPropertyDump(value: unknown): value is { type: string; value: unknown } {
+    return !!value && typeof value === 'object' && !Array.isArray(value) && 'type' in value && 'value' in value;
+}
 
 // dump接口,统一下全局引用
 class DumpUtil {
@@ -134,14 +142,53 @@ class DumpUtil {
     }
 
     /**
-     * 恢复 node snapshot 中的可编辑属性（白名单由 restore-policy 定义）。
-     * 仅处理 dump 数据的属性恢复；name 通知、locked 标志位等 undo 层逻辑不在此处。
+     * 恢复 node/scene snapshot 中的可编辑属性。
+     *
+     * 普通 Node 继续使用白名单，避免把结构字段交给 snapshot command。
+     * Scene 的 dump 结构不同：顶层可编辑字段统一编码为 IProperty，
+     * `_globals` 则是按属性名索引的 IProperty map，因此已纳入 snapshot command 的
+     * Scene 属性可以按 dump 形状统一恢复；是否纳入 undo 不由这里决定。
+     * 结构/身份字段和由 undo 层特殊处理的字段会被跳过。
+     *
      * @see NODE_SNAPSHOT_RESTORE_PROPERTY_PATHS
+     * @see SCENE_SNAPSHOT_SPECIAL_PROPERTY_KEYS
      */
     async restoreNodeSnapshotProperties(node: Node, dump: any) {
+        if (dump?.isScene) {
+            await this.restoreSceneSnapshotProperties(node, dump);
+            return;
+        }
+
         for (const path of NODE_SNAPSHOT_RESTORE_PROPERTY_PATHS) {
             if (dump[path]) {
                 await this.restoreProperty(node, path, dump[path]);
+            }
+        }
+    }
+
+    private async restoreSceneSnapshotProperties(node: Node, dump: any) {
+        for (const [key, propertyDump] of Object.entries(dump)) {
+            if (key === '_globals') {
+                if (propertyDump && typeof propertyDump === 'object' && !Array.isArray(propertyDump)) {
+                    for (const [globalKey, globalPropertyDump] of Object.entries(propertyDump)) {
+                        if (globalPropertyDump) {
+                            await this.restoreProperty(node, `_globals.${globalKey}`, globalPropertyDump);
+                        }
+                    }
+                }
+                continue;
+            }
+
+            if (
+                SCENE_SNAPSHOT_SPECIAL_PROPERTY_KEYS.includes(
+                    key as typeof SCENE_SNAPSHOT_SPECIAL_PROPERTY_KEYS[number],
+                )
+            ) {
+                continue;
+            }
+
+            if (isPropertyDump(propertyDump)) {
+                await this.restoreProperty(node, key, propertyDump);
             }
         }
     }

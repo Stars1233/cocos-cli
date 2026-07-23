@@ -29,6 +29,8 @@ export interface IUndoOperationOptions {
 export interface IUndoCheckpoint {
     commandId: string | null;
     generation: number;
+    /** 当游标回到 checkpoint 之前时，是否将 checkpoint 所在命令计入差异。 */
+    includeCheckpointCommand?: boolean;
 }
 
 export interface IUndoPushWithPreviousOptions {
@@ -116,6 +118,12 @@ export interface IUndoService {
 
     /** 当前 cursor 和 checkpoint 之间存在匹配 scope 的命令差异时返回 true。 */
     hasScopedDifference(checkpoint: IUndoCheckpoint, scope: Partial<IUndoScope>): boolean;
+
+    /** 当前 cursor 与 checkpoint 之间存在匹配 scope 的 session 差异时返回 true；可按 checkpoint 标记包含其所在命令。 */
+    hasScopedDifferenceAfterCheckpoint(checkpoint: IUndoCheckpoint, scope: Partial<IUndoScope>): boolean;
+
+    /** 丢弃 checkpoint 之后匹配 scope 的命令，同时保留不匹配 scope 的命令及其当前状态。 */
+    discardScopedChangesAfterCheckpoint(checkpoint: IUndoCheckpoint, scope: Partial<IUndoScope>): Promise<IUndoRedoResult>;
 
     /** 当前 cursor 和 checkpoint 之间存在不匹配 scope 的命令差异时返回 true。 */
     hasDifferenceOutsideScope(checkpoint: IUndoCheckpoint, scope: Partial<IUndoScope>): boolean;

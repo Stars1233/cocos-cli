@@ -584,6 +584,29 @@ describe('AnimationService animatable property metadata', () => {
         expect(parsePropertyTrack(track)).toBeNull();
     });
 
+    it('replacePropertyCurves 保留空的 child active 属性轨道以支持后续删除', () => {
+        const { AnimationClip, Node } = require('cc');
+        const { removePropertyCurve, replacePropertyCurves } = require('../scene-process/service/animation/property-curve');
+        const root = new Node('Root');
+        root.children = [new Node('Child')];
+        const clip = new AnimationClip();
+        const context = { rootNode: root, rootPath: '' };
+        const emptyActiveCurve = {
+            nodePath: 'Child',
+            key: 'active',
+            displayName: 'active',
+            name: 'active',
+            type: { value: 'cc.Boolean' },
+            keyframes: [],
+            channels: [],
+        };
+
+        expect(replacePropertyCurves(clip, [emptyActiveCurve])).toBe(true);
+        expect(clip._tracks).toHaveLength(1);
+        expect(removePropertyCurve(clip, context, { nodePath: 'Child', propKey: 'active' })).toBe(true);
+        expect(clip._tracks).toHaveLength(0);
+    });
+
     it('dumpPropertyCurves 保留属性轨道添加顺序', () => {
         const { AnimationClip } = require('cc');
         const { addPropertyCurve, dumpPropertyCurves } = require('../scene-process/service/animation/property-curve');

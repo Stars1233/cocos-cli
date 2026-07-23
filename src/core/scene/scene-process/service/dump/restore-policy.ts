@@ -1,12 +1,13 @@
 /**
  * 快照恢复策略：定义 undo/redo 恢复时，哪些属性可以安全写回。
  *
- * 这里的常量必须和 dump encode 函数保持一致：
+ * Node/component 的快照恢复策略需要和 dump encode 函数保持一致：
  * - NODE_SNAPSHOT_RESTORE_PROPERTY_PATHS  ↔  encodeNode()  (encode.ts)
  * - COMPONENT_SNAPSHOT_RESTORE_SKIP_KEYS  ↔  encodeComponent()  (encode.ts)
  *
- * 如果在 encodeNode 或 encodeComponent 里新增/移除了可编辑属性，
- * 这里对应的常量也要同步更新，确保 undo/redo 能正确覆盖这些属性。
+ * Scene 的恢复器不负责决定一个属性是否应该进入 undo；
+ * 它只负责恢复已经由 Scene 编辑 API 纳入 snapshot command 的属性。
+ * 对普通 Scene 属性可以按 IProperty dump 形状恢复，name、locked、uuid 仍由特殊规则处理。
  */
 
 /**
@@ -21,6 +22,14 @@
  * 这两个属性由 undo 层单独处理。
  */
 export const NODE_SNAPSHOT_RESTORE_PROPERTY_PATHS = ['active', 'layer', 'mobility', 'position', 'rotation', 'scale'] as const;
+
+/**
+ * Scene 快照中由 undo 层特殊处理或属于身份的字段。
+ *
+ * 普通 Scene 属性可以复用通用 snapshot 恢复器；
+ * 但是否纳入 undo 仍由 Scene 编辑 API 的持久化/可编辑性契约决定，不能由 dump 形状推断。
+ */
+export const SCENE_SNAPSHOT_SPECIAL_PROPERTY_KEYS = ['name', 'locked', 'uuid'] as const;
 
 /**
  * Component 快照身份字段 / 编辑器内部字段（黑名单）。
