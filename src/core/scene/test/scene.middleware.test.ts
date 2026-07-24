@@ -1,16 +1,22 @@
 const mockQueryAssetInfo = jest.fn();
 const mockReadFile = jest.fn();
+const mockPathExists = jest.fn();
 
 jest.mock('../../assets', () => ({
     assetManager: {
         queryAssetInfo: (...args: unknown[]) => mockQueryAssetInfo(...args),
     },
+    assetDBManager: {
+        assetDBInfo: { internal: { library: '/proj/library' } },
+    },
 }));
 
 jest.mock('fs-extra', () => ({
     readFile: (...args: unknown[]) => mockReadFile(...args),
+    pathExists: (...args: unknown[]) => mockPathExists(...args),
 }));
 
+import path from 'path';
 import sceneMiddleware from '../scene.middleware';
 
 const uuid = '04796f71-2f24-4b07-81d2-01f528b45157';
@@ -89,5 +95,67 @@ describe('scene asset middleware', () => {
         expect(mockQueryAssetInfo).toHaveBeenCalledWith(dbUrl);
         expect(response.status).toHaveBeenCalledWith(200);
         expect(response.json).toHaveBeenCalledWith(assetInfo);
+    });
+
+    // 内置 effect（pipeline/cluster-build, uuid 前两位 45）不在 asset-db 索引里，引擎按
+    // importBase 扁平路径 `${serverURL}/45/<uuid>.json` 拉取。此前只查 asset-db 必 404，
+    // 管线建不起来 → 打开场景报 pipelineSceneData null。回退到 library 磁盘目录后修复。
+    const builtinUuid = '45e7c0c8-2699-4912-b45f-d42bb8384189';
+    const builtinFile = path.join('/proj/library', '45', `${builtinUuid}.json`);
+
+    it('falls back to the library dir when asset-db has no record (builtin effect)', async () => {
+        const response = createResponse();
+        mockQueryAssetInfo.mockReturnValue(null); // 内置资源不在 asset-db
+        mockPathExists.mockImplementation(async (p: string) => p === builtinFile);
+
+        await route!.handler(
+            {
+                params: { dir: '45', uuid: builtinUuid, ext: 'json' },
+                query: { isBrowser: 'true' },
+                headers: {},
+            } as any,
+            response as any,
+        );
+
+        expect(mockReadFile).toHaveBeenCalledWith(builtinFile);
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.send).toHaveBeenCalledWith(fileContent);
+    });
+
+    it('returns the library-dir path to the Node scene engine when asset-db misses', async () => {
+        const response = createResponse();
+        mockQueryAssetInfo.mockReturnValue(null);
+        mockPathExists.mockImplementation(async (p: string) => p === builtinFile);
+
+        await route!.handler(
+            {
+                params: { dir: '45', uuid: builtinUuid, ext: 'json' },
+                query: {},
+                headers: { 'user-agent': 'node.js/22.22.0' },
+            } as any,
+            response as any,
+        );
+
+        expect(mockReadFile).not.toHaveBeenCalled();
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.send).toHaveBeenCalledWith(builtinFile);
+    });
+
+    it('still 404s when neither asset-db nor any library dir has the file', async () => {
+        const response = createResponse();
+        mockQueryAssetInfo.mockReturnValue(null);
+        mockPathExists.mockResolvedValue(false);
+
+        await route!.handler(
+            {
+                params: { dir: '45', uuid: builtinUuid, ext: 'json' },
+                query: {},
+                headers: {},
+                url: `/45/${builtinUuid}.json`,
+            } as any,
+            response as any,
+        );
+
+        expect(response.status).toHaveBeenCalledWith(404);
     });
 });

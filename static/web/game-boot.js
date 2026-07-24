@@ -18,6 +18,34 @@ export default async function gameBoot() {
         }
     };
 
+    // 热重载自愈监听：加载共用的「接收端」脚本（创建 socket + 注册 browser:reload，置 window.__previewSocket）。
+    // 关键：IDE 直接加载本 game-boot.js（其 webview 宿主页，不经过 game.ejs 首屏），因此必须在这里确保监听
+    // 已装上；且要早于可能失败/阻塞的 loadEngine——CLI 未就绪时 boot 会失败，服务端在预览 settings 首次就绪
+    // 时会广播 browser:reload（见 live-reload.ts），本页据此整页刷新自愈，无需手动刷新。若留到 boot 成功后
+    // 再注册，失败的首屏就永远收不到通知、无法自愈。
+    // 与 game.ejs 共用 preview-live-reload.js，避免两处 socket/监听逻辑重复、行为漂移（该文件无 import/export，
+    // 既可作 classic <script src> 被 game.ejs 引入，也可在此作副作用 import）。
+    // 去重：浏览器预览路径下 game.ejs 首屏已加载该脚本并置 window.__previewSocket，此处据此跳过。
+    if (!window.__previewSocket) {
+        try {
+            await import('/static/web/preview-live-reload.js');
+        } catch (e) {
+            console.warn('[Game Preview] live-reload setup unavailable:', e);
+        }
+    }
+
+    // Boot 门控：仅当预览 settings 就绪（后端已完成 asset 冷导入）时才加载引擎。
+    // settings.js 在 CLI 未就绪时返回 503 → window._CCSettings 不会被赋值（宿主页在加载本文件前已同步
+    // 注入 settings.js，故其缺失即代表后端未就绪，是可靠判据）。若此时仍继续 boot，loadEngine 会去动态
+    // import /scripting/systemjs/system.js 等在 asset 冷导入期尚未就绪或事件循环繁忙而拉取失败的资源，
+    // 概率性抛 "Failed to fetch dynamically imported module: .../system.js"。跳过后由上面注册的
+    // browser:reload 监听在服务端 settings 首次就绪时整页刷新自愈：届时 settings.js 返回 200、programming
+    // facet 早已就绪，system.js 必可用，正常 boot。
+    if (window.__previewSettingsFailed || !window._CCSettings) {
+        console.warn('[Game Preview] backend not ready (settings unavailable); skip boot, awaiting server-driven reload.');
+        return;
+    }
+
     try {
         // 以 PREVIEW 模式加载引擎（EDITOR=false / PREVIEW=true）
         const env = await loadEngine({ preview: true });
@@ -25,16 +53,6 @@ export default async function gameBoot() {
         const _originalSystem = System;
         const cc = await System.import('cc');
         globalThis.System = _originalSystem;
-
-        // 监听热重载（脚本/资源变化后服务端广播 browser:reload）
-        try {
-            if (window.io) {
-                const socket = window.io(env.serverURL);
-                socket.on('browser:reload', () => location.reload());
-            }
-        } catch (e) {
-            console.warn('[Game Preview] live-reload socket unavailable:', e);
-        }
 
         const settings = window._CCSettings || {};
         let launchScene = (settings.launch && settings.launch.launchScene) || '';

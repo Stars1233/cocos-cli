@@ -5,7 +5,8 @@ import { existsSync } from 'fs';
 import ejs from 'ejs';
 import { GlobalPaths } from '../../global';
 import { scriptingRoutes } from './scripting-routes';
-import { getCachedPreviewSettings } from './preview-settings';
+import { getCachedPreviewSettings, PreviewNotReadyError } from './preview-settings';
+import { notePreviewNotReady } from './live-reload';
 
 /**
  * 各资源数据库的 library（已导入数据）目录缓存。
@@ -49,6 +50,21 @@ export const gamePreviewResourceRoutes = [
                 res.set('Cache-Control', 'no-store');
                 res.type('application/javascript').send(`window._CCSettings = ${JSON.stringify(settings)};`);
             } catch (err) {
+                // 初始化未完成即请求预览：返回可重试的 503，让 IDE/浏览器稍后重试，
+                // 而不是返回缺 builtinAssets 的坏 settings 或裸 500。
+                if (err instanceof PreviewNotReadyError) {
+                    console.warn(`[preview-settings] not ready, ask client to retry (scene=${req.query.scene ?? ''})`);
+                    // 关键自愈触发点：确有预览页因未就绪而 boot 失败（settings.js 503）。据此标记待自愈，
+                    // 待 settings 首次真正可用时由 live-reload 广播 browser:reload 把该页刷新救回，无需手动刷新。
+                    // 以「确实发生过 503」为依据比依赖 socket 连接时序更可靠（规避异步就绪探测跨越初始化完成
+                    // 边界、标记 healed 却漏广播的竞态）。
+                    notePreviewNotReady();
+                    res.set('Retry-After', '1');
+                    return res.status(503).type('text/plain').send('// Preview initializing, please retry.');
+                }
+                // 其它异常：显式打印真实堆栈，否则会被 express 错误中间件吞成裸 500，
+                // 表现为 "PhysicsSystem initDefaultMaterial Failed" / Graphics recompileShaders of null。
+                console.error(`[preview-settings] settings.js generation FAILED (scene=${req.query.scene ?? ''}):`, err);
                 next(err);
             }
         },
@@ -170,8 +186,12 @@ export default {
                     const serverBaseUrl = `${req.protocol}://${req.get('host')}`;
                     const scene = typeof req.query.scene === 'string' ? req.query.scene : '';
                     const sceneQuery = scene ? `?scene=${encodeURIComponent(scene)}` : '';
+                    // projectPath 可能在极早期（工程刚 open、scripting 尚未 initialize）为空——
+                    // `/` 提前注册以避免初始化期兜底 404，此时用兜底标题渲染即可（页面本身只需能加载
+                    // socket.io + browser:reload 监听，就绪后自愈刷新）。
+                    const projectName = scripting.projectPath ? basename(scripting.projectPath) : 'Preview';
                     const renderData = {
-                        title: `Cocos Creator - ${basename(scripting.projectPath)}`,
+                        title: `Cocos Creator - ${projectName}`,
                         serverURL: serverBaseUrl,
                         settingsJs: `/preview/settings.js${sceneQuery}`,
                         sceneQuery,

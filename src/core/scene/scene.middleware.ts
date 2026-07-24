@@ -3,6 +3,52 @@ import { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fse from 'fs-extra';
 
+/**
+ * 各资源数据库的 library（已导入数据）目录缓存。
+ * library 是扁平的 `<uuid前两位>/<uuid>[/nativeName].<ext>` 结构，一个相对路径在所有
+ * library 目录中唯一定位文件（与预览 game-preview.middleware.getLibraryDirs 对齐）。
+ */
+let libraryDirsCache: string[] | null = null;
+async function getLibraryDirs(): Promise<string[]> {
+    if (libraryDirsCache) {
+        return libraryDirsCache;
+    }
+    const { assetDBManager } = await import('../assets');
+    const dirs = Object.values(assetDBManager.assetDBInfo)
+        .map((info: any) => info.library)
+        .filter((v): v is string => !!v);
+    libraryDirsCache = Array.from(new Set(dirs));
+    return libraryDirsCache;
+}
+
+/**
+ * asset-db 未命中时，按扁平相对路径 `<uuid前两位>/<uuid>[/nativeName].<ext>` 直接从各
+ * library 磁盘目录定位文件。
+ *
+ * 内置资源（如 pipeline/cluster-build，uuid=45e7c0c8...，前两位 45）只存在于 library 磁盘，
+ * 并不在 asset-db 索引里。引擎在 cc.game.run() 初始化渲染管线时会按 importBase 扁平路径
+ * `${serverURL}/45/<uuid>.json` 拉取该 effect；此前本路由只查 asset-db，命中不到就 404，
+ * 导致渲染管线建不起来，随后打开任意场景都报
+ * "Cannot read properties of null (reading 'pipelineSceneData')"（每次必现）。
+ * 预览通过 getLibraryDirs 同样从 library 目录服务，故预览正常而场景编辑器此前失败。
+ * 这里补上路由注释早已声明、却未实现的「回退到 library 磁盘」逻辑。
+ */
+async function resolveFromLibrary(tail: string): Promise<string | undefined> {
+    const dirs = await getLibraryDirs();
+    for (const d of dirs) {
+        const full = path.join(d, tail);
+        // 防目录穿越：join 后必须仍位于 library 目录内
+        const rel = path.relative(d, full);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+            continue;
+        }
+        if (await fse.pathExists(full)) {
+            return full;
+        }
+    }
+    return undefined;
+}
+
 function isBrowserRequest(req: Request): boolean {
     if (req.query.isBrowser === 'true') {
         return true;
@@ -126,10 +172,14 @@ export default {
                 if (req.params.dir === 'build' || req.params.dir === 'mcp') {
                     return next();
                 }
-                const { uuid, ext, nativeName } = req.params;
+                const { dir, uuid, ext, nativeName } = req.params;
                 const { assetManager } = await import('../assets');
                 const assetInfo = assetManager.queryAssetInfo(uuid);
-                const filePath = assetInfo?.library?.[`${nativeName}.${ext}`];
+                let filePath = assetInfo?.library?.[`${nativeName}.${ext}`];
+                if (!filePath) {
+                    // asset-db 未命中：回退到 library 磁盘目录（见 resolveFromLibrary 注释）
+                    filePath = await resolveFromLibrary(`${dir}/${uuid}/${nativeName}.${ext}`);
+                }
                 if (!filePath) {
                     console.warn(`Asset not found: ${req.url}`);
                     return res.status(404).json({
@@ -164,10 +214,16 @@ export default {
         {
             url: '/:dir/:uuid.:ext',
             async handler(req: Request, res: Response) {
-                const { uuid, ext } = req.params;
+                const { dir, uuid, ext } = req.params;
                 const { assetManager } = await import('../assets');
                 const assetInfo = assetManager.queryAssetInfo(uuid);
-                const filePath = assetInfo?.library?.[`.${ext}`];
+                let filePath = assetInfo?.library?.[`.${ext}`];
+                if (!filePath) {
+                    // asset-db 未命中：回退到 library 磁盘目录（见 resolveFromLibrary 注释）。
+                    // 修复内置 effect（pipeline/cluster-build 等）经 `${serverURL}/45/<uuid>.json`
+                    // 拉取时的 404，进而修复渲染管线为 null 引发的 pipelineSceneData 报错。
+                    filePath = await resolveFromLibrary(`${dir}/${uuid}.${ext}`);
+                }
                 if (!filePath) {
                     console.warn(`Asset not found: ${req.url}`);
                     return res.status(404).json({

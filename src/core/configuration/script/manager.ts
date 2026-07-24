@@ -322,8 +322,8 @@ export class ConfigurationManager extends EventEmitter implements IConfiguration
                     await fse.ensureDir(path.dirname(this.configPath));
                     this.projectConfig.version = this.version;
                     this.projectConfig.$schema = ConfigurationManager.relativeSchemaPath;
-                    // 保存配置文件
-                    await fse.writeJSON(this.configPath, this.projectConfig, { spaces: 4 });
+                    // 保存配置文件（带重试：见 writeConfigWithRetry）
+                    await this.writeConfigWithRetry();
                     this.emit(MessageType.Save, this.projectConfig);
                     newConsole.debug(`[Configuration] 已保存项目配置: ${this.configPath}`);
                 } catch (error) {
@@ -334,6 +334,46 @@ export class ConfigurationManager extends EventEmitter implements IConfiguration
 
         this.saveQueue = nextSave;
         return nextSave;
+    }
+
+    /**
+     * 把项目配置写入磁盘，对 Windows 上的瞬时文件锁错误做有界重试。
+     *
+     * cocos.config.json 是配置真相源，多处会直接读盘：预览路由（scripting-routes.ts 读碰撞分组 /
+     * 设计分辨率 / includeModules）、场景进程（scene/index.ts）等，且场景子进程是独立 fork 的引擎进程。
+     * 当某个读取方短暂持有该文件句柄时，Windows 会让写入方的 open 失败并抛出 UNKNOWN（共享冲突），
+     * 也可能是 EBUSY/EPERM/EACCES。这类错误都是瞬时的，重试即可成功。
+     *
+     * 先写临时文件再原子重命名，缩小目标文件被占用的时间窗口；重命名本身在 Windows 上仍可能因目标被
+     * 占用而瞬时失败，故整体再包一层退避重试。非瞬时错误（如目录不存在）不重试，直接抛出。
+     */
+    private async writeConfigWithRetry(maxAttempts: number = 5): Promise<void> {
+        const transientCodes = new Set(['UNKNOWN', 'EBUSY', 'EPERM', 'EACCES', 'EMFILE', 'ENFILE']);
+        const tmpPath = `${this.configPath}.${process.pid}.tmp`;
+        let lastError: unknown;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                await fse.writeJSON(tmpPath, this.projectConfig, { spaces: 4 });
+                await fse.move(tmpPath, this.configPath, { overwrite: true });
+                return;
+            } catch (error) {
+                lastError = error;
+                const code = (error as NodeJS.ErrnoException)?.code;
+                if (!code || !transientCodes.has(code) || attempt === maxAttempts) {
+                    // 尽力清理可能残留的临时文件后抛出
+                    try {
+                        await fse.remove(tmpPath);
+                    } catch {
+                        // ignore cleanup failure
+                    }
+                    throw error;
+                }
+                // 指数退避：50ms、100ms、200ms、400ms……
+                const delay = 50 * 2 ** (attempt - 1);
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+        }
+        throw lastError;
     }
 
     public async getConfigPath(): Promise<string> {

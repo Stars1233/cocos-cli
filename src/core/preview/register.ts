@@ -12,7 +12,10 @@ import { middlewareService } from '../../server/middleware';
  * 本函数，再注册 SceneScripting / Scene；纯浏览器游戏预览（无场景编辑器）则直接调用本函数。
  * 这些 handler 在非游戏预览资源时会 `next()` 放行，不影响场景编辑器自身请求。
  *
- * 前置条件：调用前需已完成 `startServer` 与 builder 初始化（settings 在请求时惰性计算）。
+ * 前置条件：调用前需已完成 `startServer`（本函数只注册路由/监听，不生成 settings）。
+ * **不要求** builder 已初始化：`/` 只渲染 game.ejs（仅需 scripting.projectPath），settings 等在请求时
+ * 惰性计算，未就绪返回可重试 503。正因如此，本函数应尽早（startServer 之后、耗时的 builder/scene
+ * 初始化之前）调用，使初始化期打开的预览页拿到带 socket 自愈能力的 game.ejs，而非裸 404 页。
  */
 let extensionHost: { dispose(): void } | undefined;
 let registered = false;

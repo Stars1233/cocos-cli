@@ -348,11 +348,15 @@ describe('ConfigurationManager', () => {
             manager['projectConfig'] = { version: '1.0.0', test: 'value' };
             await manager['save']();
             expect(mockFse.ensureDir).toHaveBeenCalledWith(path.dirname(configPath));
+            // 采用「写临时文件 + 原子重命名」的方式落盘（见 writeConfigWithRetry），
+            // 因此 writeJSON 写入的是临时路径，随后 move 到最终 configPath。
+            const tmpPath = `${configPath}.${process.pid}.tmp`;
             expect(mockFse.writeJSON).toHaveBeenCalledWith(
-                configPath,
+                tmpPath,
                 { version: '1.0.0', test: 'value', $schema: './temp/cocos.config.schema.json' },
                 { spaces: 4 }
             );
+            expect(mockFse.move).toHaveBeenCalledWith(tmpPath, configPath, { overwrite: true });
 
             // Handle save errors
             mockFse.writeJSON.mockRejectedValue(new Error('Save error'));
@@ -517,7 +521,7 @@ describe('ConfigurationManager', () => {
             // 验证修复：Save 时应该保存正确的配置，而不是空对象
             expect(mockInstance.getAll).toHaveBeenCalled();
             expect(mockFse.writeJSON).toHaveBeenCalledWith(
-                configPath,
+                `${configPath}.${process.pid}.tmp`,
                 expect.objectContaining({
                     testModule: {
                         existingKey: 'existingValue',
